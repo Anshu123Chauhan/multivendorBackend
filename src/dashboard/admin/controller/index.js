@@ -2,6 +2,51 @@ import Seller from '../../../models/Seller.js';
 import Role from '../../../models/Role.js';
 import Permission from '../../../models/Permission.js';
 import User from '../../../models/User.js';
+import Admin from '../../../models/admin.js';
+import bcrypt from 'bcrypt';
+
+export const adminRegister = async (req, res) => {
+  try {
+    const { username, email, password, fullName, phone, isActive } = req.body;
+
+    const existing = await Admin.findOne({ $or: [{ email }, { username }] });
+    if (existing) {
+      return res.status(400).json({ error: 'Username or Email already exists' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const admin = new Admin({
+      username,
+      email,
+      password: hashedPassword,
+      fullName,
+      phone,
+      isActive
+    });
+
+    await admin.save();
+
+    const adminRole = new Role({
+      role_name: 'admin',
+      admin_id: admin._id,
+      system: true
+    });
+    await adminRole.save();
+    const adminUser = new User({
+      username,
+      email,
+      password,
+      phone,
+      isActive: true,
+      role_id: adminRole._id
+  });
+  await adminUser.save();
+    res.json({ message: 'Admin created successfully', admin });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
 export const sellerRegister = async (req, res) => {
   try {

@@ -3,11 +3,11 @@ import bcrypt from 'bcrypt';
 
 const userSchema = new mongoose.Schema({
   store: { type: String },
-  name: { type: String, required: true },
+  username: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  contact_no: String,
+  phone: String,
   password: { type: String, required: true },
-  status: { type: Boolean, default: true },
+  isActive: { type: Boolean, default: true },
   seller_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Seller', default: null },
   parent_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   role_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Role', required: true },

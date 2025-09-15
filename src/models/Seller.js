@@ -7,6 +7,7 @@ const sellerSchema = new mongoose.Schema(
     username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
+    activeStatus: { type: String, default: 'Inactive', enum: ['Active', 'Inactive']},
 
     fullName: { type: String },
     businessName: { type: String },
@@ -22,6 +23,7 @@ const sellerSchema = new mongoose.Schema(
     accountHolder: { type: String },
     ifscCode: { type: String },
     bankAccount: { type: String },
+    commission : { type: String },
 
     addressProof: { type: String },
     image: { type: String },
