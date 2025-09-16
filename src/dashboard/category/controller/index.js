@@ -1,4 +1,6 @@
 import {Category,Subcategory} from '../../../models/Category.js'
+import mongoose from 'mongoose'
+import { getCurrentDateTimeIST } from '../../../utils/datetime.js';
 
 /**
  * Create category
@@ -8,16 +10,9 @@ export const createCategory = async (req, res, next) => {
     const payload = {
       name: req.body.name,
       description: req.body.description,
-      image: req.file
-        ? {
-            url: `/uploads/${req.file.filename}`, // relative path
-            alt: req.body.alt || req.body.name,   // optional alt text
-            mimeType: req.file.mimetype,
-            width: null, // you can calculate with sharp if needed
-            height: null,
-          }
+      image: req.body.image
+        ? req.body.image
         : null,// expect { url, alt, ... } or null
-      banner: req.body.banner,
       meta: req.body.meta
     };
     const cat = new Category(payload);
@@ -79,42 +74,73 @@ export const listCategories = async (req, res, next) => {
  */
 export const softDeleteCategory = async (req, res, next) => {
   try {
-    const id = req.params.id;
-   if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Invalid category ID" 
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid category ID"
       });
     }
 
     const category = await Category.findById(id);
 
     if (!category) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Category not found" 
+      return res.status(404).json({
+        success: false,
+        message: "Category not found"
       });
     }
-    // Soft delete category
-    await category.softDelete();
 
-    // optional: soft-delete all subcategories under it
-    if (req.query.cascade === 'true') {
-      await Subcategory.updateMany({ category: category._id }, { isDeleted: true, deletedAt: new Date() });
-    }
+    category.isDeleted = true;
+    category.deletedAt = getCurrentDateTimeIST; // IST date
+    await category.save();
 
-    res.json({ success: true, message: 'Category soft deleted' });
-  } catch (err) { next(err); }
+    res.json({
+      success: true,
+      message: "Category soft deleted successfully",
+      category
+    });
+
+  } catch (err) {
+    next(err);
+  }
 };
+
 
 /**
  * Restore category
  */
 export const restoreCategory = async (req, res, next) => {
   try {
-    const id = req.params.id;
-    const cat = await Category.restoreById(id);
-    if (!cat) return res.status(404).json({ success: false, message: 'Not found' });
-    res.json({ success: true, data: cat });
-  } catch (err) { next(err); }
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid category ID"
+      });
+    }
+
+    // Find only deleted category
+    const category = await Category.findOne({ _id: id, isDeleted: true });
+
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found or already active"
+      });
+    }
+    category.isDeleted = false;
+    category.deletedAt = null;
+    await category.save();
+    res.json({
+      success: true,
+      message: "Category restored successfully",
+      data: category
+    });
+  } catch (err) {
+    next(err);
+  }
 };
+;
