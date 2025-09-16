@@ -56,6 +56,10 @@ export const sellerUserRegister = async (req, res) => {
 
     res.json({ success: true, message: 'Seller user created successfully', user });
   } catch (err) {
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      return res.status(400).json({ message: `${field} already exists` });
+   }
     res.status(500).json({ success: false, error: err.message });
   }
 }
@@ -132,10 +136,10 @@ export const sellerRegister = async (req, res) => {
     await sellerUser.save();
     res.json({ success: true, message: 'Seller created successfully', seller });
   } catch (err) {
-    if (err.name === "SequelizeUniqueConstraintError")
-        return res
-          .status(400)
-          .json({ message: `${field} already exists` });
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      return res.status(400).json({ message: `${field} already exists` });
+   }
     res.status(500).json({success:false, error: err.message });
   }
 }
