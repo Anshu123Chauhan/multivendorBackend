@@ -46,6 +46,7 @@ app.use(
     }
   })
 );
+app.use("/uploads", express.static("uploads"));
 app.use('/api', routes);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.get('/', (req, res) => res.send('ECOM-Multivendor server is running'));
