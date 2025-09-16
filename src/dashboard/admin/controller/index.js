@@ -7,7 +7,7 @@ import bcrypt from 'bcrypt';
 
 export const adminRegister = async (req, res) => {
   try {
-    const { username, email, password, fullName, phone, isActive } = req.body;
+    const { username, email, password, fullName, phone } = req.body;
 
     const existing = await Admin.findOne({ $or: [{ email }, { username }] });
     if (existing) {
@@ -22,7 +22,7 @@ export const adminRegister = async (req, res) => {
       password: hashedPassword,
       fullName,
       phone,
-      isActive
+      isActive: true
     });
 
     await admin.save();
@@ -40,6 +40,7 @@ export const adminRegister = async (req, res) => {
       password,
       phone,
       isActive: true,
+      role_type: "admin",
       role_id: adminRole._id
   });
   await adminUser.save();
@@ -59,9 +60,7 @@ export const sellerRegister = async (req, res) => {
       businessAddress,
       phone,
       identityProof,
-      panCard,
-      aadhaar,
-      altId,
+      identityProofNumber,
       gstNumber,
       accountHolder,
       ifscCode,
@@ -78,9 +77,8 @@ export const sellerRegister = async (req, res) => {
       businessAddress,
       phone,
       identityProof,
-      panCard,
-      aadhaar,
-      altId,
+      identityProofNumber,
+      isActive: true,
       gstNumber,
       accountHolder,
       ifscCode,
@@ -98,10 +96,19 @@ export const sellerRegister = async (req, res) => {
       system: false
     });
     await sellerRole.save();
-
-    res.json({ message: 'Seller created successfully', seller });
+    const sellerUser = new User({
+      username,
+      email,
+      password,
+      phone,
+      isActive: true,
+      role_type: "seller",
+      role_id: sellerRole._id
+  });
+  await sellerUser.save();
+    res.json({success:true, message: 'Seller created successfully', seller });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({success:false, error: err.message });
   }
 }
 export const sellerListing = async (req, res) => {
