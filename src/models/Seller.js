@@ -24,7 +24,6 @@ const sellerSchema = new mongoose.Schema(
     commission : { type: String },
 
     addressProof: { type: String },
-    image: { type: String },
   },
   { timestamps: true }
 );

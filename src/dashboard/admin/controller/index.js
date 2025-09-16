@@ -28,7 +28,7 @@ export const adminRegister = async (req, res) => {
     await admin.save();
 
     const adminRole = new Role({
-      role_name: 'admin',
+      role_type: 'admin',
       parent_type: 'admin',
       user_id: admin._id,
       system: true
@@ -65,8 +65,7 @@ export const sellerRegister = async (req, res) => {
       accountHolder,
       ifscCode,
       bankAccount,
-      addressProof,
-      image
+      addressProof
     } = req.body;
 
     const seller = new Seller({
@@ -83,14 +82,13 @@ export const sellerRegister = async (req, res) => {
       accountHolder,
       ifscCode,
       bankAccount,
-      addressProof,
-      image
+      addressProof
     });
 
     await seller.save();
 
     const sellerRole = new Role({
-      role_name: 'seller',
+      role_type: 'seller',
       parent_type: 'admin',
       user_id: seller._id,
       system: false
@@ -138,8 +136,8 @@ export const userRegister = async (req, res) => {
 
 export const assignRole = async (req, res) => {
   try {
-    const { role_name } = req.body;
-    const r = new Role({ role_name, system: false });
+    const { role_type } = req.body;
+    const r = new Role({ role_type, system: false });
     await r.save();
     res.json({ role: r });
   } catch (err) {

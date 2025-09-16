@@ -12,7 +12,7 @@ export const sellerUserRegister = async (req, res) => {
       return res.status(500).json({ success: false, error: 'Role not found for seller' });
     }
 
-    if (roleDoc.role_name !== 'seller' && roleDoc.role_name !== 'admin') {
+    if (roleDoc.role_type !== 'seller' && roleDoc.role_type !== 'admin') {
       return res.status(403).json({ success: false, error: 'Only sellers/admin can create seller users' });
     }
 
@@ -20,7 +20,7 @@ export const sellerUserRegister = async (req, res) => {
 
     const role =
       (role_id && await Role.findById(role_id)) ||
-      (await Role.findOne({ role_name: 'custom' }));
+      (await Role.findOne({ role_type: 'custom' }));
 
     if (!role) {
       return res.status(400).json({ success: false, error: 'Role not found' });
@@ -92,8 +92,7 @@ export const sellerRegister = async (req, res) => {
       accountHolder,
       ifscCode,
       bankAccount,
-      addressProof,
-      image
+      addressProof
     } = req.body;
 
     const seller = new Seller({
@@ -109,14 +108,13 @@ export const sellerRegister = async (req, res) => {
       accountHolder,
       ifscCode,
       bankAccount,
-      addressProof,
-      image
+      addressProof
     });
 
     await seller.save();
 
     const sellerRole = new Role({
-      role_name: 'seller',
+      role_type: 'seller',
       parent_type: 'admin',
       user_id: seller._id,
       system: false
