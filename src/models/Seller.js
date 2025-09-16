@@ -4,7 +4,6 @@ const sellerSchema = new mongoose.Schema(
   {
     id: { type: Number, unique: true, sparse: true },
 
-    username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     isActive: { type: Boolean, default: false },

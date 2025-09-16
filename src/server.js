@@ -6,12 +6,19 @@ import morgan from 'morgan';
 import winston from "winston";
 import "winston-daily-rotate-file";
 import swaggerUi from "swagger-ui-express";
+import cors from 'cors';
 import swaggerDocument from "./swagger-output.json" with { type: "json" };
 
 dotenv.config();
 const app = express();
 app.use(express.json());
-
+const corsOptions = {
+  origin: ["http://localhost:3000", "http://localhost:3017"],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+};
+app.use(cors(corsOptions));
 await connectDB();
 const transport = new winston.transports.DailyRotateFile({
   filename: "logs/%DATE%-combined.log",
