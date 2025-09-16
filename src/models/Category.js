@@ -121,6 +121,8 @@ const SubcategorySchema = new mongoose.Schema(
 
     isDeleted: { type: Boolean, default: false, index: true },
     deletedAt: { type: Date},
+    createdAt:{ type:Date, default:getCurrentDateTimeIST},
+    updatedAt: {type:Date},
 
     meta: { type: mongoose.Schema.Types.Mixed },
   },

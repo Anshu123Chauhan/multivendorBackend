@@ -143,4 +143,161 @@ export const restoreCategory = async (req, res, next) => {
     next(err);
   }
 };
-;
+export const getCategoryById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid Category ID" });
+    }
+
+    const category = await Category.findOne({ _id: id, isDeleted: false })
+
+    if (!category) {
+      return res.status(404).json({ success: false, message: "Category not found" });
+    }
+
+    res.json({ success: true, data: category });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Create SubCategory
+export const createSubCategory = async (req, res, next) => {
+  try {
+    const { name, category, image, banner } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(category)) {
+      return res.status(400).json({ success: false, message: "Invalid category ID" });
+    }
+
+    const slug = generateSlug(name);
+
+    const subCategory = new SubCategory({
+      name,
+      slug,
+      category,
+      image,
+      banner
+    });
+
+    await subCategory.save();
+    res.status(201).json({ success: true, data: subCategory });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Get all SubCategories
+export const getAllSubCategories = async (req, res, next) => {
+  try {
+    const subCategories = await SubCategory.find({ isDeleted: false })
+      .populate("category", "name slug");
+    res.json({ success: true, data: subCategories });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Get single SubCategory
+export const getSubCategoryById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid subcategory ID" });
+    }
+
+    const subCategory = await SubCategory.findOne({ _id: id, isDeleted: false })
+      .populate("category", "name slug");
+
+    if (!subCategory) {
+      return res.status(404).json({ success: false, message: "SubCategory not found" });
+    }
+
+    res.json({ success: true, data: subCategory });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Update SubCategory
+export const updateSubCategory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name, image, banner, isActive } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid subcategory ID" });
+    }
+
+    const updateData = { image, banner, isActive };
+    if (name) updateData.name = name;
+    if (name) updateData.slug = generateSlug(name);
+
+    const subCategory = await SubCategory.findOneAndUpdate(
+      { _id: id, isDeleted: false },
+      updateData,
+      { new: true }
+    );
+
+    if (!subCategory) {
+      return res.status(404).json({ success: false, message: "SubCategory not found" });
+    }
+
+    res.json({ success: true, data: subCategory });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Soft Delete SubCategory
+export const softDeleteSubCategory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid subcategory ID" });
+    }
+
+    const subCategory = await SubCategory.findById(id);
+
+    if (!subCategory) {
+      return res.status(404).json({ success: false, message: "SubCategory not found" });
+    }
+
+    subCategory.isDeleted = true;
+    subCategory.deletedAt = new Date();
+    await subCategory.save();
+
+    res.json({ success: true, message: "SubCategory soft deleted", data: subCategory });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Restore SubCategory
+export const restoreSubCategory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid subcategory ID" });
+    }
+
+    const subCategory = await SubCategory.findOne({ _id: id, isDeleted: true });
+
+    if (!subCategory) {
+      return res.status(404).json({ success: false, message: "SubCategory not found or already active" });
+    }
+
+    subCategory.isDeleted = false;
+    subCategory.deletedAt = null;
+    await subCategory.save();
+
+    res.json({ success: true, message: "SubCategory restored", data: subCategory });
+  } catch (err) {
+    next(err);
+  }
+};
