@@ -2,18 +2,25 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 
 const userSchema = new mongoose.Schema({
-  store: { type: String },
   username: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  phone: String,
+  phone: { type: String },
   password: { type: String, required: true },
   isActive: { type: Boolean, default: true },
   isDeleted: { type: Boolean, default: false },
-  seller_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Seller', default: null },
-  parent_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   role_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Role', required: true },
-  approve_status: Number
 }, { timestamps: true });
+
+userSchema.pre('save', async function (next) {
+  if (!this.isNew) return next();
+  try {
+    const last = await this.constructor.findOne({}, { id: 1 }, { sort: { id: -1 } });
+    this.id = last && last.id ? last.id + 1 : 1;
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
