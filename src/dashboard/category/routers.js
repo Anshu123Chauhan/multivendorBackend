@@ -1,11 +1,34 @@
-import express from 'express'
-import {createCategory,listCategories,updateCategory,restoreCategory,softDeleteCategory} from './controller/index.js'
-const router = express.Router();
-import {upload} from '../../middleware/upload.js'
+import express from "express";
+import {
+  createCategory,
+  listCategories,
+  updateCategory,
+  restoreCategory,
+  softDeleteCategory,
+  getCategoryById,
+  createSubCategory,
+  getAllSubCategories,
+  getSubCategoryById,
+  updateSubCategory,
+  softDeleteSubCategory,
+  restoreSubCategory
 
-router.post('/', createCategory);
-router.get('/', listCategories);
-router.put('/:id', updateCategory);
-router.delete('/:id', softDeleteCategory); // soft delete
-router.post('/:id/restore', restoreCategory);
+} from "./controller/index.js";
+const router = express.Router();
+import { upload } from "../../middleware/upload.js";
+
+router.post("/", createCategory);
+router.get("/", listCategories);
+router.get("/:id", getCategoryById)
+router.put("/:id", updateCategory);
+router.delete("/:id", softDeleteCategory); // soft delete
+router.post("/:id/restore", restoreCategory);
+
+// Subcategory
+router.post("/sub/", createSubCategory);
+router.get("/sub", getAllSubCategories);
+router.get("/sub/:id", getSubCategoryById);
+router.put("/sub/:id", updateSubCategory);
+router.delete("/sub/:id", softDeleteSubCategory);
+router.patch("/sub/:id/restore", restoreSubCategory);
 export default router;
