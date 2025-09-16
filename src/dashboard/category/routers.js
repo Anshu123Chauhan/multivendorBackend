@@ -3,7 +3,7 @@ import {createCategory,listCategories,updateCategory,restoreCategory,softDeleteC
 const router = express.Router();
 import {upload} from '../../middleware/upload.js'
 
-router.post('/', upload.single("image"), createCategory);
+router.post('/', createCategory);
 router.get('/', listCategories);
 router.put('/:id', updateCategory);
 router.delete('/:id', softDeleteCategory); // soft delete

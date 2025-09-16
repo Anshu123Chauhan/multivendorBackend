@@ -2,39 +2,36 @@ import mongoose from "mongoose";
 import slugify from "slugify";
 import {getCurrentDateTimeIST} from '../utils/datetime.js'
 
-const ImageSchema = new mongoose.Schema(
-  {
-    url: { type: String, trim: true },
-    alt: { type: String, trim: true },
-    width: Number,
-    height: Number,
-    mimeType: String,
-    createdAt: {
-      type: Date,
-      defaultValue: getCurrentDateTimeIST,
-    },
-    updatedAt: {
-      type: Date,
-    },
-  },
-  { _id: false }
-);
+// const ImageSchema = new mongoose.Schema(
+//   {
+//     url: { type: String, trim: true },
+//     alt: { type: String, trim: true },
+//     width: Number,
+//     height: Number,
+//     mimeType: String,
+//     createdAt: {
+//       type: Date,
+//       defaultValue: getCurrentDateTimeIST,
+//     },
+//     updatedAt: {
+//       type: Date,
+//     },
+//   },
+//   { _id: false }
+// );
 
 const CategorySchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     slug: { type: String, trim: true, index: true, unique: true },
     description: { type: String, trim: true },
-
     // Optional image/banner
-    image: ImageSchema,
-
+    image: { type: String},
     // Active / Inactive
     isActive: { type: Boolean, default: true },
-
     // Soft delete
     isDeleted: { type: Boolean, default: false, index: true },
-    deletedAt: { type: Date, default: null },
+    deletedAt: { type: Date },
 
     // Any extra metadata
     meta: { type: mongoose.Schema.Types.Mixed },
@@ -92,12 +89,13 @@ CategorySchema.pre("aggregate", function (next) {
 // instance method: soft delete
 CategorySchema.methods.softDelete = function () {
   this.isDeleted = true;
-  this.deletedAt = new Date();
+  this.deletedAt = getCurrentDateTimeIST;
   return this.save();
 };
 
 // static method: restore
 CategorySchema.statics.restoreById = function (id) {
+  console.log("id==>", id)
   return this.findByIdAndUpdate(
     id,
     { isDeleted: false, deletedAt: null },
@@ -117,12 +115,12 @@ const SubcategorySchema = new mongoose.Schema(
       required: true,
     },
 
-    image: ImageSchema,
+    image: { type: String},
 
     isActive: { type: Boolean, default: true },
 
     isDeleted: { type: Boolean, default: false, index: true },
-    deletedAt: { type: Date, default: null },
+    deletedAt: { type: Date},
 
     meta: { type: mongoose.Schema.Types.Mixed },
   },
@@ -156,7 +154,7 @@ SubcategorySchema.pre("aggregate", function (next) {
 
 SubcategorySchema.methods.softDelete = function () {
   this.isDeleted = true;
-  this.deletedAt = new Date();
+  this.deletedAt = getCurrentDateTimeIST;
   return this.save();
 };
 SubcategorySchema.statics.restoreById = function (id) {
