@@ -7,7 +7,8 @@ const sellerSchema = new mongoose.Schema(
     username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    activeStatus: { type: String, default: 'Inactive', enum: ['Active', 'Inactive']},
+    isActive: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
 
     fullName: { type: String },
     businessName: { type: String },
@@ -15,9 +16,7 @@ const sellerSchema = new mongoose.Schema(
 
     phone: { type: String },
     identityProof: { type: String },
-    panCard: { type: String },
-    aadhaar: { type: String },
-    altId: { type: String },
+    identityProofNumber: { type: String },
     gstNumber: { type: String },
 
     accountHolder: { type: String },
