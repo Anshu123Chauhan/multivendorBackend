@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
 
 const sellerSchema = new mongoose.Schema(
   {
@@ -39,4 +40,17 @@ sellerSchema.pre('save', async function (next) {
   }
 });
 
+sellerSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  try {
+    this.password = await bcrypt.hash(this.password, 10);
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
+sellerSchema.methods.comparePassword = async function (candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
 export default mongoose.model('Seller', sellerSchema);

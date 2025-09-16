@@ -34,16 +34,6 @@ export const adminRegister = async (req, res) => {
       system: true
     });
     await adminRole.save();
-    const adminUser = new User({
-      username,
-      email,
-      password,
-      phone,
-      isActive: true,
-      role_type: "admin",
-      role_id: adminRole._id
-  });
-  await adminUser.save();
     res.json({ message: 'Admin created successfully', admin });
   } catch (err) {
     if (err.code === 11000) {
@@ -98,16 +88,6 @@ export const sellerRegister = async (req, res) => {
       system: false
     });
     await sellerRole.save();
-    const sellerUser = new User({
-      username: fullName,
-      email,
-      password,
-      phone,
-      isActive: true,
-      role_type: "seller",
-      role_id: sellerRole._id
-  });
-  await sellerUser.save();
     res.json({success:true, message: 'Seller created successfully', seller });
   } catch (err) {
     if (err.code === 11000) {
@@ -146,21 +126,12 @@ export const userRegister = async (req, res) => {
   }
 }
 
-export const assignRole = async (req, res) => {
+export const assignRoleAndPermission = async (req, res) => {
   try {
-    const { role_type } = req.body;
-    const r = new Role({ role_type, system: false });
+    const { role_name, role_type, tab_name, p_read, p_write, p_update, p_delete } = req.body;
+    const r = new Role({ role_name, role_type, system: false });
     await r.save();
-    res.json({ role: r });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-}
-
-export const assignPermission = async (req, res) => {
-  try {
-    const { roleId } = req.params;
-    const { tab_name, p_read, p_write, p_update, p_delete } = req.body;
+    const roleId = r._id;
     await Permission.findOneAndUpdate({ role_id: roleId, tab_name }, { $set: { p_read: !!p_read, p_write: !!p_write, p_update: !!p_update, p_delete: !!p_delete } }, { upsert: true });
     res.json({ message: 'Permission assigned to role' });
   } catch (err) {

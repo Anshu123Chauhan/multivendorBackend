@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const RoleSchema = new mongoose.Schema({
   id: { type: Number, unique: true, sparse: true },
+  role_name: { type: String, required: true },
   role_type: { type: String, required: true },
   parent_type: { type: String, required: true },
   user_id: { type: mongoose.Schema.Types.ObjectId, default: null },
