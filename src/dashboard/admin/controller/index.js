@@ -95,7 +95,7 @@ export const sellerRegister = async (req, res) => {
     });
     await sellerRole.save();
     const sellerUser = new User({
-      username,
+      username: fullName,
       email,
       password,
       phone,
