@@ -16,9 +16,7 @@ const sellerSchema = new mongoose.Schema(
 
     phone: { type: String },
     identityProof: { type: String },
-    panCard: { type: String },
-    aadhaar: { type: String },
-    altId: { type: String },
+    identityProofNumber: { type: String },
     gstNumber: { type: String },
 
     accountHolder: { type: String },

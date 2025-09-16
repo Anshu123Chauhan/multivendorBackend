@@ -29,7 +29,8 @@ export const adminRegister = async (req, res) => {
 
     const adminRole = new Role({
       role_name: 'admin',
-      admin_id: admin._id,
+      parent_type: 'admin',
+      user_id: admin._id,
       system: true
     });
     await adminRole.save();
@@ -103,6 +104,14 @@ export const sellerRegister = async (req, res) => {
     res.json({ message: 'Seller created successfully', seller });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+}
+export const sellerListing = async (req, res) => {
+  try {
+    const sellerList = await Seller.find();
+    res.json({ success: true, message: 'Seller get successfully', sellerList });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 }
 
