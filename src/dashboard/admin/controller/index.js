@@ -94,8 +94,9 @@ export const sellerRegister = async (req, res) => {
 
     const sellerRole = new Role({
       role_name: 'seller',
-      seller_id: seller._id,
-      system: true
+      parent_type: 'admin',
+      user_id: seller._id,
+      system: false
     });
     await sellerRole.save();
 

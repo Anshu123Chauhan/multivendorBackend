@@ -1,10 +1,11 @@
 import mongoose from 'mongoose';
 
 const RoleSchema = new mongoose.Schema({
-  code: { type: Number, unique: true, sparse: true },
+  id: { type: Number, unique: true, sparse: true },
   role_name: { type: String, required: true },
-  seller_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Seller', default: null },
-  status: { type: Boolean, default: true },
+  parent_type: { type: String, required: true },
+  user_id: { type: mongoose.Schema.Types.ObjectId, default: null },
+  isActive: { type: Boolean, default: true },
   system: { type: Boolean, default: false }
 }, { timestamps: true });
 
