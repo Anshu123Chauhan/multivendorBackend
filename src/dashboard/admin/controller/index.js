@@ -52,7 +52,6 @@ export const adminRegister = async (req, res) => {
 export const sellerRegister = async (req, res) => {
   try {
     const {
-      username,
       email,
       password,
       fullName,
@@ -72,7 +71,6 @@ export const sellerRegister = async (req, res) => {
     } = req.body;
 
     const seller = new Seller({
-      username,
       email,
       password,
       fullName,
