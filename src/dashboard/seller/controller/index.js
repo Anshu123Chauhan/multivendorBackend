@@ -7,7 +7,7 @@ export const sellerUserRegister = async (req, res) => {
   try {
      const seller = req.user;
 
-    if (seller.userType !== 'seller' && roleDoc.userType !== 'admin') {
+    if (seller.userType !== 'Seller' && seller.userType !== 'Admin') {
       return res.status(403).json({ success: false, error: 'Only sellers/admin can create seller users' });
     }
 

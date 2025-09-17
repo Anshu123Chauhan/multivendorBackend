@@ -23,7 +23,7 @@ export const authenticate = async (req, res, next) => {
       res.status(400).json({ success: false, error: "invalid loginType" });
     }
     if (!data) return res.status(401).json({ error: 'User not found' });
-    req.user = data;
+    req.user = {...data, userType: loginType};
     next();
   } catch (err) {
     console.error(err);

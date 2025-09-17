@@ -102,8 +102,7 @@ export const sellerListing = async (req, res) => {
 export const userRegister = async (req, res) => {
     try {
        const admin = req.user;
-  
-      if ( admin.userType !== 'admin') {
+      if ( admin.userType !== 'Admin') {
         return res.status(403).json({ success: false, error: 'Only admin can create admin users' });
       }
   
