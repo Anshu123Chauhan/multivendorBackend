@@ -155,20 +155,43 @@ export const userRegister = async (req, res) => {
 
 export const userGet = async (req,res) => {
    try {
-     const seller = req.user;
-    const roleDoc = await Role.findById(seller.role_id);
+     const activeUser = req.user;
+     const {id} = req.params;
 
-    if (!roleDoc) {
-      return res.status(500).json({ success: false, error: 'Role not found for seller' });
+    if (activeUser.userType !== "Seller" && activeUser.userType !== "Admin") {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          error: "Only sellers/admin can create seller users",
+        });
     }
-
-    if (roleDoc.role_type !== 'seller' && roleDoc.role_type !== 'admin') {
-      return res.status(403).json({ success: false, error: 'Only sellers/admin can create seller users' });
-    }
-    const {id} = req.params;
     const user = await User.findById(id);
 
-    res.json({ success: true, message: 'Seller user update successfully', user });
+    res.json({ success: true, message: 'user fetch successfully', user });
+  } catch (err) {
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      return res.status(400).json({ message: `${field} already exists` });
+   }
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+export const userList = async (req,res) => {
+   try {
+     const activeUser = req.user;
+
+    if (activeUser.userType !== "Seller" && activeUser.userType !== "Admin") {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          error: "Only sellers/admin can create seller users",
+        });
+    }
+    const user = await User.find({parent_type: activeUser.userType, parent_id: activeUser._id}).select("-__v -password").lean();
+
+    res.json({ success: true, message: 'user fetch successfully', user });
   } catch (err) {
     if (err.code === 11000) {
       const field = Object.keys(err.keyPattern)[0];
