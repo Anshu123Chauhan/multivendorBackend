@@ -8,6 +8,8 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   isActive: { type: Boolean, default: true },
   isDeleted: { type: Boolean, default: false },
+  parent_type: { type: String, required: true },
+  parent_id: { type: mongoose.Schema.Types.ObjectId },
   role_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Role', required: true },
 }, { timestamps: true });
 
