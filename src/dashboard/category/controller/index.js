@@ -91,7 +91,7 @@ export const softDeleteCategory = async (req, res, next) => {
     }
 
     category.isDeleted = true;
-    category.deletedAt = getCurrentDateTimeIST; // IST date
+    category.deletedAt = new Date(); 
     await category.save();
 
     res.json({
@@ -142,7 +142,7 @@ export const restoreCategory = async (req, res, next) => {
   }
 };
 export const getCategoryById = async (req, res, next) => {
-  console.log("this is the get category")
+ 
   try {
     const { id } = req.params;
 
@@ -258,32 +258,15 @@ export const getSubCategoryById = async (req, res, next) => {
 
 // Update SubCategory
 export const updateSubCategory = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { name, image, banner, isActive } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: "Invalid subcategory ID" });
-    }
-
-    const updateData = { image, banner, isActive };
-    if (name) updateData.name = name;
-    if (name) updateData.slug = generateSlug(name);
-
-    const subCategory = await Subcategory.findOneAndUpdate(
-      { _id: id, isDeleted: false },
-      updateData,
-      { new: true }
-    );
-
-    if (!subCategory) {
-      return res.status(404).json({ success: false, message: "SubCategory not found" });
-    }
-
-    res.json({ success: true, data: subCategory });
-  } catch (err) {
-    next(err);
-  }
+try {
+    const id = req.params.id;
+    const update = { ...req.body };
+    // Do not allow direct isDeleted changes here; use dedicated endpoints
+    delete update.isDeleted;
+    const subcat = await Subcategory.findByIdAndUpdate(id, update, { new: true, runValidators: true });
+    if (!subcat) return res.status(404).json({ success: false, message: 'Subcategory not found' });
+    res.json({ success: true, data: subcat });
+  } catch (err) { next(err); }
 };
 
 // Soft Delete SubCategory
@@ -296,6 +279,7 @@ export const softDeleteSubCategory = async (req, res, next) => {
     }
 
     const subCategory = await Subcategory.findById(id);
+    console.log("subCategory==>", subCategory, id)
 
     if (!subCategory) {
       return res.status(404).json({ success: false, message: "SubCategory not found" });

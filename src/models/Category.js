@@ -88,7 +88,6 @@ CategorySchema.methods.softDelete = function () {
 
 // static method: restore
 CategorySchema.statics.restoreById = function (id) {
-  console.log("id==>", id);
   return this.findByIdAndUpdate(
     id,
     { isDeleted: false, deletedAt: null },
@@ -99,7 +98,7 @@ CategorySchema.statics.restoreById = function (id) {
 const SubcategorySchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
-    slug: { type: String, trim: true, index: true},
+    slug: { type: String, trim: true, index: true,unique: true},
     description: { type: String, trim: true },
     category: {
       type: mongoose.Schema.Types.ObjectId,
