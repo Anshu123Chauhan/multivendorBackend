@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import slugify from "slugify";
-import {getCurrentDateTimeIST} from '../utils/datetime.js'
+import { getCurrentDateTimeIST } from "../utils/datetime.js";
 
 // const ImageSchema = new mongoose.Schema(
 //   {
@@ -26,7 +26,7 @@ const CategorySchema = new mongoose.Schema(
     slug: { type: String, trim: true, index: true, unique: true },
     description: { type: String, trim: true },
     // Optional image/banner
-    image: { type: String},
+    image: { type: String },
     // Active / Inactive
     isActive: { type: Boolean, default: true },
     // Soft delete
@@ -35,16 +35,9 @@ const CategorySchema = new mongoose.Schema(
 
     // Any extra metadata
     meta: { type: mongoose.Schema.Types.Mixed },
-    createdAt: {
-      type: Date,
-      defaultValue: getCurrentDateTimeIST,
-    },
-    updatedAt: {
-      type: Date,
-    },
   },
   {
-    timestamps: false,
+    timestamps: true,
   }
 );
 
@@ -95,7 +88,7 @@ CategorySchema.methods.softDelete = function () {
 
 // static method: restore
 CategorySchema.statics.restoreById = function (id) {
-  console.log("id==>", id)
+  console.log("id==>", id);
   return this.findByIdAndUpdate(
     id,
     { isDeleted: false, deletedAt: null },
@@ -106,28 +99,25 @@ CategorySchema.statics.restoreById = function (id) {
 const SubcategorySchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
-    slug: { type: String, trim: true, index: true },
+    slug: { type: String, trim: true, index: true},
     description: { type: String, trim: true },
-
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
       required: true,
     },
 
-    image: { type: String},
+    image: { type: String },
 
     isActive: { type: Boolean, default: true },
 
     isDeleted: { type: Boolean, default: false, index: true },
-    deletedAt: { type: Date},
-    createdAt:{ type:Date, default:getCurrentDateTimeIST},
-    updatedAt: {type:Date},
+    deletedAt: { type: Date },
 
     meta: { type: mongoose.Schema.Types.Mixed },
   },
   {
-    timestamps: false,
+    timestamps: true,
   }
 );
 
