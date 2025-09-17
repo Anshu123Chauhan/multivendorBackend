@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import Role from '../models/Role.js';
 import admin from '../models/admin.js';
 import Seller from '../models/Seller.js';
 
@@ -23,7 +22,7 @@ export const authenticate = async (req, res, next) => {
       res.status(400).json({ success: false, error: "invalid loginType" });
     }
     if (!data) return res.status(401).json({ error: 'User not found' });
-    req.user = {...data, userType: loginType};
+    req.user = {...data.toObject(), userType: loginType};
     next();
   } catch (err) {
     console.error(err);
