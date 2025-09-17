@@ -7,28 +7,33 @@ const brandSchema = new mongoose.Schema(
       type: String,
       required: [true, "Brand name is required"],
       trim: true,
-      unique: true
+      unique: true,
     },
     description: {
       type: String,
-      default: ""
+      default: "",
     },
     image: {
-      type: String, // store URL or file path
-      default: null
+      type: String,
+      default: null,
     },
     isActive: {
       type: Boolean,
-      default: true
+      default: true,
     },
     isDeleted: {
       type: Boolean,
-      default: false
+      default: false,
     },
     deletedAt: {
       type: Date,
-      default: null
-    }
+      default: null,
+    },
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+    },
   },
   { timestamps: true } // automatically adds createdAt & updatedAt
 );
