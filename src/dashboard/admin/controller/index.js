@@ -298,3 +298,27 @@ export const assignRoleAndPermission = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+export const getRoleAndPermission = async (req, res) => {
+  try {
+    const user = req.user;
+
+    const roles = await Role.find({ user_id: user._id, isActive: true }).select("-__v").lean();
+
+    const roleWithPermissions = await Promise.all(
+      roles.map(async (r) => {
+        const permissions = await Permission.find({ role_id: r._id }).select("-__v").lean();
+        return {
+          ...r,
+          permissions
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: roleWithPermissions,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
