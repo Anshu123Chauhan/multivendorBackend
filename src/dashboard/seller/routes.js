@@ -13,7 +13,7 @@ router.post('/register', sellerRegister)
 router.put('/update/:id',authenticate, updateSeller)
 router.put('/get/:id',authenticate, getSeller)
 router.delete('/delete/:id',authenticate, deleteSeller)
-router.post('/role/:roleId/permission', authenticate, sellerUserPermission);
+router.post('/role-permission', authenticate, sellerUserPermission);
 
 export default router;
 
