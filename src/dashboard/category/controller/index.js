@@ -1,6 +1,6 @@
-import {Category,Subcategory} from '../../../models/Category.js'
+import { Category, Subcategory } from '../../../models/Category.js'
 import mongoose from 'mongoose'
-import { getCurrentDateTimeIST } from '../../../utils/datetime.js';
+import { generateSlug } from "../../../utils/slugify.js";
 
 /**
  * Create category
@@ -28,6 +28,9 @@ export const updateCategory = async (req, res, next) => {
     const update = { ...req.body };
     // Do not allow direct isDeleted changes here; use dedicated endpoints
     delete update.isDeleted;
+    if (update.name) {
+      update.slug = generateSlug(update.name); // ✅ use update.name
+    }
     const cat = await Category.findByIdAndUpdate(id, update, { new: true, runValidators: true });
     if (!cat) return res.status(404).json({ success: false, message: 'Category not found' });
     res.json({ success: true, data: cat });
@@ -91,7 +94,7 @@ export const softDeleteCategory = async (req, res, next) => {
     }
 
     category.isDeleted = true;
-    category.deletedAt = new Date(); 
+    category.deletedAt = new Date();
     await category.save();
 
     res.json({
@@ -142,7 +145,7 @@ export const restoreCategory = async (req, res, next) => {
   }
 };
 export const getCategoryById = async (req, res, next) => {
- 
+
   try {
     const { id } = req.params;
 
@@ -165,12 +168,12 @@ export const getCategoryById = async (req, res, next) => {
 // Create SubCategory
 export const createSubCategory = async (req, res, next) => {
   try {
-    const payload = { 
+    const payload = {
       name: req.body.name,
       description: req.body.description,
       image: req.body.image || null,// expect { url, alt, ... } or null
       meta: req.body.meta,
-      category:req.body.category
+      category: req.body.category
     };
     if (!mongoose.Types.ObjectId.isValid(payload.category)) {
       return res.status(400).json({ success: false, message: "Invalid category ID" });
@@ -216,7 +219,7 @@ export const getAllSubCategory = async (req, res, next) => {
 
     const [data, total] = await Promise.all([
       Subcategory.find(q)
-        .populate("category", "name slug") 
+        .populate("category", "name slug")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -258,11 +261,14 @@ export const getSubCategoryById = async (req, res, next) => {
 
 // Update SubCategory
 export const updateSubCategory = async (req, res, next) => {
-try {
+  try {
     const id = req.params.id;
     const update = { ...req.body };
     // Do not allow direct isDeleted changes here; use dedicated endpoints
     delete update.isDeleted;
+    if (update.name) {
+      update.slug = generateSlug(update.name); // ✅ use update.name
+    }
     const subcat = await Subcategory.findByIdAndUpdate(id, update, { new: true, runValidators: true });
     if (!subcat) return res.status(404).json({ success: false, message: 'Subcategory not found' });
     res.json({ success: true, data: subcat });
