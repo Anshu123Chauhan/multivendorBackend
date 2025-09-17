@@ -26,7 +26,7 @@ router.post("/:id/restore", restoreCategory);
 
 // Subcategory
 router.post("/sub", createSubCategory);
-router.get("/sub", ()=>{console.log("this is the route is working")});
+router.get("/sub/list",getAllSubCategory);
 router.get("/sub/:id", getSubCategoryById);
 router.put("/sub/:id", updateSubCategory);
 router.delete("/sub/:id", softDeleteSubCategory);

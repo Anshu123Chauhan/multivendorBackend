@@ -142,6 +142,7 @@ export const restoreCategory = async (req, res, next) => {
   }
 };
 export const getCategoryById = async (req, res, next) => {
+  console.log("this is the get category")
   try {
     const { id } = req.params;
 
@@ -184,58 +185,7 @@ export const createSubCategory = async (req, res, next) => {
 };
 
 // Get all SubCategories
-// export const getAllSubCategory = async (req, res, next) => {
-//     console.log("🔥 Inside getAllSubCategories"); // debug
-
-//   // try {
-//   //   const page = Math.max(1, parseInt(req.query.page || 1));
-//   //   const limit = Math.min(100, parseInt(req.query.limit || 20));
-//   //   const skip = (page - 1) * limit;
-
-//   //   const q = { isDeleted: false };
-
-//   //   // Search by name
-//   //   if (req.query.q) {
-//   //     q.name = { $regex: req.query.q, $options: "i" };
-//   //   }
-
-//   //   // Filter by active/inactive
-//   //   if (typeof req.query.isActive !== "undefined") {
-//   //     q.isActive = req.query.isActive === "true";
-//   //   }
-
-//   //   // Filter by category (optional)
-//   //   if (req.query.category && mongoose.Types.ObjectId.isValid(req.query.category)) {
-//   //     q.category = req.query.category;
-//   //   }
-
-//   //   // includeDeleted explicit override
-//   //   if (req.query.includeDeleted === "true") {
-//   //     q.isDeleted = { $in: [true, false] };
-//   //   }
-
-//   //   const [data, total] = await Promise.all([
-//   //     Subcategory.find(q)
-//   //       .populate("category", "name slug") // show category name/slug
-//   //       .sort({ createdAt: -1 })
-//   //       .skip(skip)
-//   //       .limit(limit)
-//   //       .lean(),
-//   //     Subcategory.countDocuments(q.isDeleted ? { ...q } : q),
-//   //   ]);
-
-//   //   res.json({
-//   //     success: true,
-//   //     data,
-//   //     meta: { total, page, limit },
-//   //   });
-//   // } catch (err) {
-//   //   next(err);
-//   // }
-// };
-
 export const getAllSubCategory = async (req, res, next) => {
-  console.log("🔥 Inside getAllSubCategories", req.query);
 
   try {
     const page = Math.max(1, parseInt(req.query.page || 1));
@@ -244,39 +194,41 @@ export const getAllSubCategory = async (req, res, next) => {
 
     const q = { isDeleted: false };
 
-    // search filter
-    if (req.query.q) q.name = { $regex: req.query.q, $options: "i" };
+    // Search by name
+    if (req.query.q) {
+      q.name = { $regex: req.query.q, $options: "i" };
+    }
 
-    // active filter
+    // Filter by active/inactive
     if (typeof req.query.isActive !== "undefined") {
       q.isActive = req.query.isActive === "true";
     }
 
-    // category filter (only if valid)
-    if (req.query.category) {
-      if (mongoose.Types.ObjectId.isValid(req.query.category)) {
-        q.category = req.query.category;
-      } else {
-        console.warn("⚠️ Ignoring invalid category filter:", req.query.category);
-      }
+    // Filter by category (optional)
+    if (req.query.category && mongoose.Types.ObjectId.isValid(req.query.category)) {
+      q.category = req.query.category;
     }
 
-    // include deleted override
+    // includeDeleted explicit override
     if (req.query.includeDeleted === "true") {
       q.isDeleted = { $in: [true, false] };
     }
 
     const [data, total] = await Promise.all([
       Subcategory.find(q)
-        .populate("category", "name slug")
+        .populate("category", "name slug") 
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
-      Subcategory.countDocuments(q),
+      Subcategory.countDocuments(q.isDeleted ? { ...q } : q),
     ]);
 
-    res.json({ success: true, data, meta: { total, page, limit } });
+    res.json({
+      success: true,
+      data,
+      meta: { total, page, limit },
+    });
   } catch (err) {
     next(err);
   }
