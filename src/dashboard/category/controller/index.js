@@ -10,9 +10,7 @@ export const createCategory = async (req, res, next) => {
     const payload = {
       name: req.body.name,
       description: req.body.description,
-      image: req.body.image
-        ? req.body.image
-        : null,// expect { url, alt, ... } or null
+      image: req.body.image || null,// expect { url, alt, ... } or null
       meta: req.body.meta
     };
     const cat = new Category(payload);
@@ -166,21 +164,17 @@ export const getCategoryById = async (req, res, next) => {
 // Create SubCategory
 export const createSubCategory = async (req, res, next) => {
   try {
-    const { name, category, image, banner } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(category)) {
+    const payload = { 
+      name: req.body.name,
+      description: req.body.description,
+      image: req.body.image || null,// expect { url, alt, ... } or null
+      meta: req.body.meta,
+      category:req.body.category
+    };
+    if (!mongoose.Types.ObjectId.isValid(payload.category)) {
       return res.status(400).json({ success: false, message: "Invalid category ID" });
     }
-
-    const slug = generateSlug(name);
-
-    const subCategory = new SubCategory({
-      name,
-      slug,
-      category,
-      image,
-      banner
-    });
+    const subCategory = new Subcategory(payload);
 
     await subCategory.save();
     res.status(201).json({ success: true, data: subCategory });
@@ -190,11 +184,99 @@ export const createSubCategory = async (req, res, next) => {
 };
 
 // Get all SubCategories
-export const getAllSubCategories = async (req, res, next) => {
+// export const getAllSubCategory = async (req, res, next) => {
+//     console.log("🔥 Inside getAllSubCategories"); // debug
+
+//   // try {
+//   //   const page = Math.max(1, parseInt(req.query.page || 1));
+//   //   const limit = Math.min(100, parseInt(req.query.limit || 20));
+//   //   const skip = (page - 1) * limit;
+
+//   //   const q = { isDeleted: false };
+
+//   //   // Search by name
+//   //   if (req.query.q) {
+//   //     q.name = { $regex: req.query.q, $options: "i" };
+//   //   }
+
+//   //   // Filter by active/inactive
+//   //   if (typeof req.query.isActive !== "undefined") {
+//   //     q.isActive = req.query.isActive === "true";
+//   //   }
+
+//   //   // Filter by category (optional)
+//   //   if (req.query.category && mongoose.Types.ObjectId.isValid(req.query.category)) {
+//   //     q.category = req.query.category;
+//   //   }
+
+//   //   // includeDeleted explicit override
+//   //   if (req.query.includeDeleted === "true") {
+//   //     q.isDeleted = { $in: [true, false] };
+//   //   }
+
+//   //   const [data, total] = await Promise.all([
+//   //     Subcategory.find(q)
+//   //       .populate("category", "name slug") // show category name/slug
+//   //       .sort({ createdAt: -1 })
+//   //       .skip(skip)
+//   //       .limit(limit)
+//   //       .lean(),
+//   //     Subcategory.countDocuments(q.isDeleted ? { ...q } : q),
+//   //   ]);
+
+//   //   res.json({
+//   //     success: true,
+//   //     data,
+//   //     meta: { total, page, limit },
+//   //   });
+//   // } catch (err) {
+//   //   next(err);
+//   // }
+// };
+
+export const getAllSubCategory = async (req, res, next) => {
+  console.log("🔥 Inside getAllSubCategories", req.query);
+
   try {
-    const subCategories = await SubCategory.find({ isDeleted: false })
-      .populate("category", "name slug");
-    res.json({ success: true, data: subCategories });
+    const page = Math.max(1, parseInt(req.query.page || 1));
+    const limit = Math.min(100, parseInt(req.query.limit || 20));
+    const skip = (page - 1) * limit;
+
+    const q = { isDeleted: false };
+
+    // search filter
+    if (req.query.q) q.name = { $regex: req.query.q, $options: "i" };
+
+    // active filter
+    if (typeof req.query.isActive !== "undefined") {
+      q.isActive = req.query.isActive === "true";
+    }
+
+    // category filter (only if valid)
+    if (req.query.category) {
+      if (mongoose.Types.ObjectId.isValid(req.query.category)) {
+        q.category = req.query.category;
+      } else {
+        console.warn("⚠️ Ignoring invalid category filter:", req.query.category);
+      }
+    }
+
+    // include deleted override
+    if (req.query.includeDeleted === "true") {
+      q.isDeleted = { $in: [true, false] };
+    }
+
+    const [data, total] = await Promise.all([
+      Subcategory.find(q)
+        .populate("category", "name slug")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Subcategory.countDocuments(q),
+    ]);
+
+    res.json({ success: true, data, meta: { total, page, limit } });
   } catch (err) {
     next(err);
   }
@@ -209,7 +291,7 @@ export const getSubCategoryById = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Invalid subcategory ID" });
     }
 
-    const subCategory = await SubCategory.findOne({ _id: id, isDeleted: false })
+    const subCategory = await Subcategory.findOne({ _id: id, isDeleted: false })
       .populate("category", "name slug");
 
     if (!subCategory) {
@@ -236,7 +318,7 @@ export const updateSubCategory = async (req, res, next) => {
     if (name) updateData.name = name;
     if (name) updateData.slug = generateSlug(name);
 
-    const subCategory = await SubCategory.findOneAndUpdate(
+    const subCategory = await Subcategory.findOneAndUpdate(
       { _id: id, isDeleted: false },
       updateData,
       { new: true }
@@ -261,7 +343,7 @@ export const softDeleteSubCategory = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Invalid subcategory ID" });
     }
 
-    const subCategory = await SubCategory.findById(id);
+    const subCategory = await Subcategory.findById(id);
 
     if (!subCategory) {
       return res.status(404).json({ success: false, message: "SubCategory not found" });
@@ -286,7 +368,7 @@ export const restoreSubCategory = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Invalid subcategory ID" });
     }
 
-    const subCategory = await SubCategory.findOne({ _id: id, isDeleted: true });
+    const subCategory = await Subcategory.findOne({ _id: id, isDeleted: true });
 
     if (!subCategory) {
       return res.status(404).json({ success: false, message: "SubCategory not found or already active" });
