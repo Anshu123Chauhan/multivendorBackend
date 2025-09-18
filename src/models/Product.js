@@ -45,8 +45,11 @@ const ProductSchema = new mongoose.Schema(
     },
     status: { type: String, default: "draft" },            // e.g. draft/active
     category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
+    catname:{type: String,},
     subCategory: { type: mongoose.Schema.Types.ObjectId, ref: "SubCategory" },
+    subcatname:{type: String,},
     brand: { type: mongoose.Schema.Types.ObjectId, ref: "Brand" },
+    brandname:{type: String},
     sellingPrice: { type: Number, default: 0 },
     mrp: { type: Number, default: 0 },
     sku: { type: String },     // optional product-level SKU
@@ -55,7 +58,8 @@ const ProductSchema = new mongoose.Schema(
     vendor: { type: mongoose.Schema.Types.ObjectId},
     variants: [VariantSchema], // embedded variants (each variant has its own images)
     isDeleted: { type: Boolean, default: false },
-    usertype: {type: String}
+    usertype: {type: String},
+    slug: {type: String,trim: true, index: true, unique: true}
   },
   { timestamps: true }
 );
