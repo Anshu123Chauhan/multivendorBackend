@@ -6,13 +6,14 @@ import User from '../../../models/User.js';
 export const login = async (req, res) => {
   try {
     const { email, password, loginType } = req.body;
+    const payload = { email, isActive: true, isDeleted: false };
     let user;
     if(loginType == 'Admin'){
-      user = await Admin.findOne({ email });
+      user = await Admin.findOne(payload);
     } else if(loginType == 'Seller'){
-      user = await Seller.findOne({ email });
+      user = await Seller.findOne(payload);
     } else if(loginType == 'User'){
-      user = await User.findOne({ email });
+      user = await User.findOne(payload);
     } else {
       res.status(400).json({ success: false, error: "invalid loginType" });
     }

@@ -95,7 +95,7 @@ export const sellerRegister = async (req, res) => {
 };
 export const sellerListing = async (req, res) => {
   try {
-    const sellerList = await Seller.find();
+    const sellerList = await Seller.find({isDeleted: false});
     res.json({ success: true, message: "Seller get successfully", sellerList });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
