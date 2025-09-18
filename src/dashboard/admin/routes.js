@@ -10,8 +10,8 @@ router.get('/seller-List', sellerListing);
 router.post('/user-register', userRegister);
 router.get('/user-get/:id', userGet);
 router.get('/user-list', userList);
-router.put('/user-update', userUpdate);
-router.delete('/user-delete', userDelete);
+router.put('/user-update/:id', userUpdate);
+router.delete('/user-delete/:id', userDelete);
 router.post('/role-permission', assignRoleAndPermission);
 router.get('/role-permission', getRoleAndPermission);
 
