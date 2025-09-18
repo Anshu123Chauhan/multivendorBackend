@@ -340,3 +340,75 @@ export const getRoleAndPermission = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+export const updateRoleAndPermission = async (req, res) => {
+  try {
+    let user = req.user;
+    const {
+      role_name,
+      permissions = [],
+    } = req.body;
+    const { id } = req.params;
+    const newRoleData = {};
+    if(role_name) newRoleData.role_name = role_name;
+    const r = await Role.findOneAndUpdate(
+      {
+        parent_type: user.userType,
+        parent_id: user._id,
+        _id: new mongoose.Types.ObjectId(id)
+      }, newRoleData
+     );
+    await r.save();
+    for (const p of permissions) {
+      await Permission.findOneAndUpdate(
+        { role_id: id, tab_name: p.tab_name },
+        {
+          $set: {
+            p_read: !!p.p_read,
+            p_write: !!p.p_write,
+            p_update: !!p.p_update,
+            p_delete: !!p.p_delete,
+          },
+        },
+        { upsert: true }
+      );
+    }
+    res.json({
+      success: true,
+      message: `Permission updated to role by ${user.userType}`,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+export const deleteRoleAndPermission = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const user = req.user;
+    const {id} = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ success: false, error: "Invalid role ID" });
+    }
+    const role = await Role.findOneAndDelete(
+      {
+        parent_id: user._id, parent_type: user.userType, _id: new mongoose.Types.ObjectId(id)
+      },
+      { session });
+    if (!role) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ success: false, error: "Role not found" });
+    }
+    await Permission.deleteMany({ role_id: id },{ session });
+    await session.commitTransaction();
+    session.endSession();
+    res.json({
+      success: true,
+      message: `Permissions deleted to role by ${user.userType}`,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
