@@ -92,3 +92,64 @@ export const getProduct = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const updateProduct = async (req, res) => {
+  try {
+    const {
+      name,
+      description,
+      images,        // optional: new array replaces existing product.images
+      status,
+      category,
+      subCategory,
+      brand,
+      sellingPrice,
+      mrp,
+      sku,
+      inventory,
+      tags,
+      vendor,
+      variants,
+      usertype      // optional: array to replace variants
+    } = req.body;
+
+    const product = await Product.findOne({ _id: req.params.id, isDeleted: false });
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    if (name !== undefined) product.name = name;
+    if (description !== undefined) product.description = description;
+    if (images !== undefined) product.images = Array.isArray(images) ? images : product.images;
+    if (status !== undefined) product.status = status;
+    if (category !== undefined) product.category = category;
+    if (subCategory !== undefined) product.subCategory = subCategory;
+    if (brand !== undefined) product.brand = brand;
+    if (sellingPrice !== undefined) product.sellingPrice = sellingPrice;
+    if (mrp !== undefined) product.mrp = mrp;
+    if (sku !== undefined) product.sku = sku;
+    if (inventory !== undefined) product.inventory = inventory;
+    if (tags !== undefined) product.tags = Array.isArray(tags) ? tags : product.tags;
+    if (vendor !== undefined) product.vendor = vendor;
+    if (usertype !==undefined) product.usertype = usertype
+
+    if (variants !== undefined) {
+      product.variants = Array.isArray(variants) ? variants : product.variants;
+    }
+    await product.save();
+    res.json(product);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Soft-delete
+export const deleteProduct = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+    product.isDeleted = true;
+    await product.save();
+    res.json({ message: "Product deleted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
