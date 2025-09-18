@@ -19,10 +19,9 @@ export const sellerRegister = async (req, res) => {
       addressProof,
       commission
     } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
     const seller = new Seller({
       email,
-      password: hashedPassword,
+      password,
       fullName,
       businessName,
       businessAddress,
