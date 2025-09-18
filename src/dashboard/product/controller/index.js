@@ -153,3 +153,113 @@ export const deleteProduct = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+//Restore Product
+export const restoreProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findOne({ _id: id, isDeleted: true });
+    if (!product) return res.status(404).json({ message: "Product not found or not deleted" });
+
+    product.isDeleted = false;
+    await product.save();
+
+    res.json({ message: "Product restored successfully", product });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const addVariant = async (req, res) => {
+  try {
+    const { id } = req.params; // product id
+    const { sku, price, mrp, stock, images = [], attributes = {} } = req.body;
+
+    const product = await Product.findOne({ _id: id, isDeleted: false });
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    const newVariant = {
+      sku,
+      price,
+      mrp,
+      stock,
+      images,
+      attributes,
+    };
+
+    product.variants.push(newVariant);
+    await product.save();
+
+    res.status(201).json(product);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+//Update a Variant
+export const updateVariant = async (req, res) => {
+  try {
+    const { id, variantId } = req.params;
+
+    const product = await Product.findOne({ _id: id, isDeleted: false });
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    const variant = product.variants.id(variantId);
+    if (!variant) return res.status(404).json({ message: "Variant not found" });
+
+    // update only provided fields
+    const { sku, price, mrp, stock, images, attributes } = req.body;
+    if (sku !== undefined) variant.sku = sku;
+    if (price !== undefined) variant.price = price;
+    if (mrp !== undefined) variant.mrp = mrp;
+    if (stock !== undefined) variant.stock = stock;
+    if (images !== undefined) variant.images = images;
+    if (attributes !== undefined) variant.attributes = attributes;
+
+    await product.save();
+    res.json(product);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+//Soft Delete Variant
+export const deleteVariant = async (req, res) => {
+  try {
+    const { id, variantId } = req.params;
+
+    const product = await Product.findOne({ _id: id, isDeleted: false });
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    const variant = product.variants.id(variantId);
+    if (!variant) return res.status(404).json({ message: "Variant not found" });
+
+    variant.isDeleted = true; // soft delete flag
+    await product.save();
+
+    res.json({ message: "Variant deleted successfully", product });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Restore Variant
+export const restoreVariant = async (req, res) => {
+  try {
+    const { id, variantId } = req.params;
+
+    const product = await Product.findOne({ _id: id, isDeleted: false });
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    const variant = product.variants.id(variantId);
+    if (!variant || variant.isDeleted === false)
+      return res.status(404).json({ message: "Variant not found or not deleted" });
+
+    variant.isDeleted = false;
+    await product.save();
+
+    res.json({ message: "Variant restored successfully", product });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

@@ -13,7 +13,7 @@ const VariantSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    mrp: { type: Number, required:true },
+    mrp: { type: Number},
     stock: {
       type: Number,
       default: 0,
