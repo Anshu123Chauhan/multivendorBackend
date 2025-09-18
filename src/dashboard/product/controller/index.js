@@ -1,6 +1,7 @@
 import {Product} from "../../../models/Product.js";
 import jwt from 'jsonwebtoken'
 import mongoose from 'mongoose'
+import {generateSlug} from '../../../utils/slugify.js'
 import dotenv from 'dotenv'
 dotenv.config();
 
@@ -18,8 +19,11 @@ export const createProduct = async (req, res) => {
       images = [], 
       status, 
       category,
+      catname,
       subCategory,
+      subcatename,
       brand,
+      brandname,
       sellingPrice,
       mrp,
       sku,
@@ -31,14 +35,18 @@ export const createProduct = async (req, res) => {
      if (!mongoose.Types.ObjectId.isValid(category) || !mongoose.Types.ObjectId.isValid(subCategory)|| !mongoose.Types.ObjectId.isValid(brand)) {
           return res.status(400).json({ success: false, message: "Invalid ID" });
         }
+    const slug = generateSlug(name);    
     const product = await Product.create({
       name,
       description,
       images,
       status,
       category,
+      catname,
       subCategory,
+      subcatname,
       brand,
+      brandname,
       sellingPrice,
       mrp,
       sku,
@@ -46,7 +54,8 @@ export const createProduct = async (req, res) => {
       tags,
       vendor,
       variants,
-      usertype
+      usertype,
+      slug
     });
 
     res.status(201).json({sucess:true,product});
@@ -101,8 +110,11 @@ export const updateProduct = async (req, res) => {
       images,        // optional: new array replaces existing product.images
       status,
       category,
+      catname,
       subCategory,
+      subcatname,
       brand,
+      brandname,
       sellingPrice,
       mrp,
       sku,
@@ -114,15 +126,16 @@ export const updateProduct = async (req, res) => {
     } = req.body;
 
     const product = await Product.findOne({ _id: req.params.id, isDeleted: false });
+    const slug = generateSlug(name); 
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    if (name !== undefined) product.name = name;
+    if (name !== undefined){ product.name = name; product.slug = slug; }
     if (description !== undefined) product.description = description;
     if (images !== undefined) product.images = Array.isArray(images) ? images : product.images;
     if (status !== undefined) product.status = status;
-    if (category !== undefined) product.category = category;
-    if (subCategory !== undefined) product.subCategory = subCategory;
-    if (brand !== undefined) product.brand = brand;
+    if (category !== undefined) {product.category = category; product.catname=catname}
+    if (subCategory !== undefined){ product.subCategory = subCategory; product.subcatname=subcatname}
+    if (brand !== undefined){ product.brand = brand; product.brandname=brandname}
     if (sellingPrice !== undefined) product.sellingPrice = sellingPrice;
     if (mrp !== undefined) product.mrp = mrp;
     if (sku !== undefined) product.sku = sku;

@@ -6,6 +6,7 @@ import { authenticate } from '../middleware/auth.js';
 import category from './category/routers.js'
 import brand from './brand/routes.js'
 import product from './product/routes.js'
+import attribute from './attribute/routes.js'
 
 const router = express.Router();
 router.use('/auth', auth);
@@ -14,6 +15,7 @@ router.use('/seller', seller);
 router.use('/admin/category', authenticate, category)
 router.use('/admin/brand', authenticate, brand)
 router.use('/admin/product',authenticate, product)
+router.use('/admin/attribute',authenticate, attribute)
 
 
 export default router;
