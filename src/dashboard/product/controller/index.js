@@ -4,7 +4,6 @@ import mongoose from 'mongoose'
 import dotenv from 'dotenv'
 dotenv.config();
 
-// Create Product with images & variants (each variant may include images array)
 export const createProduct = async (req, res) => {
   try {
     const authHeader = req.headers["authorization"];
@@ -52,6 +51,43 @@ export const createProduct = async (req, res) => {
 
     res.status(201).json({sucess:true,product});
 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getProducts = async (req, res) => {
+  try {
+    let { page = 1, limit = 10, search = "", sortBy = "createdAt", order = "desc" } = req.query;
+    page = parseInt(page);
+    limit = parseInt(limit);
+
+    const baseQuery = { isDeleted: false };
+    if (search) {
+      baseQuery.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { "variants.sku": { $regex: search, $options: "i" } },
+        { sku: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const total = await Product.countDocuments(baseQuery);
+    const data = await Product.find(baseQuery)
+      .sort({ [sortBy]: order === "desc" ? -1 : 1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    res.json({ total, page, limit, data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getProduct = async (req, res) => {
+  try {
+    const product = await Product.findOne({ _id: req.params.id, isDeleted: false });
+    if (!product) return res.status(404).json({ message: "Product not found" });
+    res.json(product);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

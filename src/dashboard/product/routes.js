@@ -1,8 +1,8 @@
 import express from "express";
 import {
   createProduct,
-//   getProducts,
-//   getProduct,
+  getProducts,
+  getProduct,
 //   updateProduct,
 //   deleteProduct,
 } from "./controller/index.js";
@@ -10,8 +10,8 @@ import {
 const router = express.Router();
 
 router.post("/", createProduct);
-// router.get("/", getProducts);
-// router.get("/:id", getProduct);
+router.get("/", getProducts);
+router.get("/:id", getProduct);
 // router.put("/:id", updateProduct);
 // router.delete("/:id", deleteProduct);
 
