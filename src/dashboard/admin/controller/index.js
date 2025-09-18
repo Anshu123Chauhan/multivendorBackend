@@ -4,6 +4,7 @@ import Permission from "../../../models/Permission.js";
 import User from "../../../models/User.js";
 import Admin from "../../../models/admin.js";
 import bcrypt from "bcrypt";
+import { mongoose } from "mongoose";
 
 export const adminRegister = async (req, res) => {
   try {
@@ -163,7 +164,7 @@ export const userGet = async (req,res) => {
         .status(403)
         .json({
           success: false,
-          error: "Only sellers/admin can create seller users",
+          error: "Only sellers/admin can get users",
         });
     }
     const user = await User.findById(id);
@@ -186,7 +187,7 @@ export const userList = async (req,res) => {
         .status(403)
         .json({
           success: false,
-          error: "Only sellers/admin can create seller users",
+          error: "Only sellers/admin can get users",
         });
     }
     const user = await User.find({parent_type: activeUser.userType, parent_id: activeUser._id}).select("-__v -password").lean();
@@ -202,52 +203,36 @@ export const userList = async (req,res) => {
 }
 export const userUpdate = async (req,res) => {
    try {
-     const seller = req.user;
-    const roleDoc = await Role.findById(seller.role_id);
+    const activeUser = req.user;
+    const {id} = req.params;
+    const { username, phone, email, role_id } = req.body;
 
-    if (!roleDoc) {
-      return res.status(500).json({ success: false, error: 'Role not found for seller' });
+    if (activeUser.userType !== "Seller" && activeUser.userType !== "Admin") {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          error: "Only sellers/admin can edit users",
+        });
     }
-
-    if (roleDoc.role_type !== 'seller' && roleDoc.role_type !== 'admin') {
-      return res.status(403).json({ success: false, error: 'Only sellers/admin can create seller users' });
+    const updateData = {};
+    if (username) updateData.username = username;
+    if (phone) updateData.phone = phone;
+    if (email) updateData.email = email;
+    if (role_id) updateData.role_id = role_id;
+    const user = await User.findOneAndUpdate(
+      {
+        parent_type: activeUser.userType,
+        parent_id: activeUser._id,
+        _id: new mongoose.Types.ObjectId(id),
+      },
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+    if(user){
+      return res.json({ success: true, message: 'user updated successfully', user });
     }
-
-    const { username, email, password, role_id, permissions = [] } = req.body;
-    if(!role_id) return res.status(400).json({ success: false, error: 'role_id is required' });
-    const role = role_id && await Role.findById(role_id);
-
-    if (!role) {
-      return res.status(400).json({ success: false, error: 'Role not found' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await User.findByIdAndUpdate( id, {
-      username,
-      email,
-      password: hashedPassword,
-      role_id: role._id,
-      parent_id: seller._id, 
-      seller_id: seller._id  
-    });
-
-    for (const p of permissions) {
-      await Permission.findOneAndUpdate(
-        { user_id: user._id, tab_name: p.tab_name }, 
-        {
-          $set: {
-            p_read: !!p.p_read,
-            p_write: !!p.p_write,
-            p_update: !!p.p_update,
-            p_delete: !!p.p_delete
-          }
-        },
-        { upsert: true }
-      );
-    }
-
-    res.json({ success: true, message: 'Seller user updated successfully', user });
+    return res.json({ success: false, message: `user not found or ${activeUser.userType} not authorized ` });
   } catch (err) {
     if (err.code === 11000) {
       const field = Object.keys(err.keyPattern)[0];
@@ -258,20 +243,28 @@ export const userUpdate = async (req,res) => {
 }
 export const userDelete = async (req,res) => {
     try {
-     const seller = req.user;
-    const roleDoc = await Role.findById(seller.role_id);
-
-    if (!roleDoc) {
-      return res.status(400).json({ success: false, error: 'Role not found for seller' });
-    }
-
-    if (roleDoc.role_type !== 'seller' && roleDoc.role_type !== 'admin') {
-      return res.status(403).json({ success: false, error: 'Only sellers/admin can create seller users' });
-    }
+    const activeUser = req.user;
     const {id} = req.params;
-    const user = await User.findByIdAndDelete(id);
 
-    res.json({ success: true, message: 'Seller user delete successfully', user });
+    if (activeUser.userType !== "Seller" && activeUser.userType !== "Admin") {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          error: "Only sellers/admin can edit users",
+        });
+    }
+    const user = await User.findOneAndDelete(
+      {
+        parent_type: activeUser.userType,
+        parent_id: activeUser._id,
+        _id: new mongoose.Types.ObjectId(id),
+      },
+    );
+    if(user){
+      return res.json({ success: true, message: 'user deleted successfully' });
+    }
+    return res.json({ success: false, message: `user not found or ${activeUser.userType} not authorized ` });
   } catch (err) {
     if (err.code === 11000) {
       const field = Object.keys(err.keyPattern)[0];
@@ -291,7 +284,7 @@ export const assignRoleAndPermission = async (req, res) => {
       permissions = [],
     } = req.body;
     const r = new Role({
-      user_id: user._id,
+      parent_id: user._id,
       role_name,
       role_type,
       parent_type,
@@ -325,7 +318,7 @@ export const getRoleAndPermission = async (req, res) => {
   try {
     const user = req.user;
 
-    const roles = await Role.find({ user_id: user._id, isActive: true }).select("-__v").lean();
+    const roles = await Role.find({ parent_id: user._id, isActive: true }).select("-__v").lean();
 
     const roleWithPermissions = await Promise.all(
       roles.map(async (r) => {

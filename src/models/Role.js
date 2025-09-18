@@ -5,7 +5,7 @@ const RoleSchema = new mongoose.Schema({
   role_name: { type: String, required: true },
   role_type: { type: String, required: true },
   parent_type: { type: String, required: true },
-  user_id: { type: mongoose.Schema.Types.ObjectId, default: null },
+  parent_id: { type: mongoose.Schema.Types.ObjectId, default: null },
   isActive: { type: Boolean, default: true },
   system: { type: Boolean, default: false }
 }, { timestamps: true });
