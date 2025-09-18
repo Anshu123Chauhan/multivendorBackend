@@ -115,7 +115,7 @@ export const userRegister = async (req, res) => {
         });
     }
 
-    const { username, phone, email, password, role_id } = req.body;
+    const { username, phone, email, password, role_id, isActive } = req.body;
     if (!role_id)
       return res
         .status(400)
@@ -136,6 +136,7 @@ export const userRegister = async (req, res) => {
       role_id: role._id,
       parent_type: activeUser.userType,
       parent_id: activeUser._id,
+      isActive
     });
 
     await user.save();
@@ -190,7 +191,7 @@ export const userList = async (req,res) => {
           error: "Only sellers/admin can get users",
         });
     }
-    const user = await User.find({parent_type: activeUser.userType, parent_id: activeUser._id}).select("-__v -password").lean();
+    const user = await User.find({parent_type: activeUser.userType, parent_id: activeUser._id}).select("-__v -password").lean().populate("role_id", "-__v") ;
 
     res.json({ success: true, message: 'user fetch successfully', user });
   } catch (err) {
@@ -205,7 +206,7 @@ export const userUpdate = async (req,res) => {
    try {
     const activeUser = req.user;
     const {id} = req.params;
-    const { username, phone, email, role_id } = req.body;
+    const { username, phone, email, role_id, isActive } = req.body;
 
     if (activeUser.userType !== "Seller" && activeUser.userType !== "Admin") {
       return res
@@ -220,6 +221,7 @@ export const userUpdate = async (req,res) => {
     if (phone) updateData.phone = phone;
     if (email) updateData.email = email;
     if (role_id) updateData.role_id = role_id;
+    if (isActive) updateData.isActive = isActive;
     const user = await User.findOneAndUpdate(
       {
         parent_type: activeUser.userType,
