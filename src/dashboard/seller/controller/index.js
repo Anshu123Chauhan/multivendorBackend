@@ -1,4 +1,5 @@
 import Seller from '../../../models/Seller.js';
+import bcrypt from "bcrypt";
 
 export const sellerRegister = async (req, res) => {
   try {
@@ -15,12 +16,13 @@ export const sellerRegister = async (req, res) => {
       accountHolder,
       ifscCode,
       bankAccount,
-      addressProof
+      addressProof,
+      commission
     } = req.body;
-
+    const hashedPassword = await bcrypt.hash(password, 10);
     const seller = new Seller({
       email,
-      password,
+      password: hashedPassword,
       fullName,
       businessName,
       businessAddress,
@@ -31,7 +33,8 @@ export const sellerRegister = async (req, res) => {
       accountHolder,
       ifscCode,
       bankAccount,
-      addressProof
+      addressProof,
+      commission
     });
 
     await seller.save();
@@ -47,8 +50,18 @@ export const sellerRegister = async (req, res) => {
 }
 export const getSeller = async (req, res) => {
   try {
+    const activeUser = req.user;
+
+    if (activeUser.userType !== "Seller" && activeUser.userType !== "Admin") {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          error: "Only seller/admin can get seller",
+        });
+    }
     const { id } = req.params;
-    const seller = await Seller.findById(id);
+    const seller = await Seller.findById(id).select("-password -__v");
     res.json({ success: true, message: 'Seller created successfully', seller });
   } catch (err) {
     if (err.code === 11000) {
@@ -60,6 +73,16 @@ export const getSeller = async (req, res) => {
 }
 export const updateSeller = async (req, res) => {
   try {
+    const activeUser = req.user;
+
+    if (activeUser.userType !== "Seller" && activeUser.userType !== "Admin") {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          error: "Only seller/admin can update seller",
+        });
+    }
     const {
       fullName,
       businessName,
@@ -71,7 +94,8 @@ export const updateSeller = async (req, res) => {
       accountHolder,
       ifscCode,
       bankAccount,
-      addressProof
+      addressProof,
+      commission
     } = req.body;
     const { id } = req.params;
 
@@ -86,7 +110,8 @@ export const updateSeller = async (req, res) => {
       accountHolder,
       ifscCode,
       bankAccount,
-      addressProof
+      addressProof,
+      commission
     });
 
     res.json({ success: true, message: 'Seller updated successfully', seller });
@@ -100,6 +125,16 @@ export const updateSeller = async (req, res) => {
 }
 export const deleteSeller = async (req, res) => {
   try {
+    const activeUser = req.user;
+
+    if (activeUser.userType !== "Seller" && activeUser.userType !== "Admin") {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          error: "Only seller/admin can delete seller",
+        });
+    }
     const { id } = req.params;
     const seller = await Seller.findByIdAndUpdate( id ,{
       isActive: false,
