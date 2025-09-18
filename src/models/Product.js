@@ -1,0 +1,63 @@
+// models/Product.js
+import mongoose from "mongoose";
+
+const VariantSchema = new mongoose.Schema(
+  {
+    sku: {
+      type: String,
+      required: true,
+      // Note: unique in subdocuments isn't reliably enforced by MongoDB indexes,
+      // consider validating uniqueness in app logic if needed.
+    },
+    price: {
+      type: Number,
+      required: true,
+    },
+    mrp: { type: Number, required:true },
+    stock: {
+      type: Number,
+      default: 0,
+    },
+    images: {
+      type: [String],     // <-- multiple image URL strings for each variant
+      default: [],
+    },
+    attributes: {
+      type: Map,          // flexible key-value pairs, e.g. { color: "red", size: "M" }
+      of: String,
+      default: {},
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { timestamps: true }
+);
+
+const ProductSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true },    // Title / Name
+    description: { type: String },
+    images: {
+      type: [String],    // <-- multiple image URL strings for the product
+      default: [],
+    },
+    status: { type: String, default: "draft" },            // e.g. draft/active
+    category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
+    subCategory: { type: mongoose.Schema.Types.ObjectId, ref: "SubCategory" },
+    brand: { type: mongoose.Schema.Types.ObjectId, ref: "Brand" },
+    sellingPrice: { type: Number, default: 0 },
+    mrp: { type: Number, default: 0 },
+    sku: { type: String },     // optional product-level SKU
+    inventory: { type: Number, default: 0 }, // optional aggregated stock
+    tags: { type: [String], default: [] },
+    vendor: { type: mongoose.Schema.Types.ObjectId},
+    variants: [VariantSchema], // embedded variants (each variant has its own images)
+    isDeleted: { type: Boolean, default: false },
+    usertype: {type: String}
+  },
+  { timestamps: true }
+);
+
+export const Product = mongoose.model("Product", ProductSchema);
