@@ -95,7 +95,8 @@ export const updateSeller = async (req, res) => {
       ifscCode,
       bankAccount,
       addressProof,
-      commission
+      commission,
+      isActive
     } = req.body;
     const { id } = req.params;
 
@@ -111,7 +112,8 @@ export const updateSeller = async (req, res) => {
       ifscCode,
       bankAccount,
       addressProof,
-      commission
+      commission,
+      isActive
     });
 
     res.json({ success: true, message: 'Seller updated successfully', seller });
