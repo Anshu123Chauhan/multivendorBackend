@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.post('/register', sellerRegister)
 router.put('/update/:id',authenticate, updateSeller)
-router.put('/get/:id',authenticate, getSeller)
+router.get('/get/:id',authenticate, getSeller)
 router.delete('/delete/:id',authenticate, deleteSeller)
 
 export default router;
