@@ -19,11 +19,8 @@ export const createProduct = async (req, res) => {
       images = [], 
       status, 
       category,
-      catname,
       subCategory,
-      subcatname,
       brand,
-      brandname,
       sellingPrice,
       mrp,
       sku,
@@ -42,11 +39,8 @@ export const createProduct = async (req, res) => {
       images,
       status,
       category,
-      catname,
       subCategory,
-      subcatname,
       brand,
-      brandname,
       sellingPrice,
       mrp,
       sku,
@@ -82,6 +76,9 @@ export const getProducts = async (req, res) => {
 
     const total = await Product.countDocuments(baseQuery);
     const data = await Product.find(baseQuery)
+      .populate("category", "name")  
+      .populate("subCategory", "name") 
+      .populate("brand", "name")
       .sort({ [sortBy]: order === "desc" ? -1 : 1 })
       .skip((page - 1) * limit)
       .limit(limit);
@@ -94,7 +91,10 @@ export const getProducts = async (req, res) => {
 
 export const getProduct = async (req, res) => {
   try {
-    const product = await Product.findOne({ _id: req.params.id, isDeleted: false });
+    const product = await Product.findOne({ _id: req.params.id, isDeleted: false })
+      .populate("category", "name")  
+      .populate("subCategory", "name") 
+      .populate("brand", "name");
     if (!product) return res.status(404).json({ message: "Product not found" });
     res.json(product);
   } catch (err) {
@@ -110,11 +110,8 @@ export const updateProduct = async (req, res) => {
       images,        // optional: new array replaces existing product.images
       status,
       category,
-      catname,
       subCategory,
-      subcatname,
       brand,
-      brandname,
       sellingPrice,
       mrp,
       sku,
@@ -133,9 +130,9 @@ export const updateProduct = async (req, res) => {
     if (description !== undefined) product.description = description;
     if (images !== undefined) product.images = Array.isArray(images) ? images : product.images;
     if (status !== undefined) product.status = status;
-    if (category !== undefined) {product.category = category; product.catname=catname}
-    if (subCategory !== undefined){ product.subCategory = subCategory; product.subcatname=subcatname}
-    if (brand !== undefined){ product.brand = brand; product.brandname=brandname}
+    if (category !== undefined) product.category = category;
+    if (subCategory !== undefined) product.subCategory = subCategory;
+    if (brand !== undefined) product.brand = brand; 
     if (sellingPrice !== undefined) product.sellingPrice = sellingPrice;
     if (mrp !== undefined) product.mrp = mrp;
     if (sku !== undefined) product.sku = sku;
