@@ -1,4 +1,4 @@
-// controllers/attribute.controller.js
+import slugify from 'slugify'
 import Attribute from "../../../models/Attribute.js";
 import {generateSlug} from '../../../utils/slugify.js'
 import mongoose from 'mongoose'
@@ -7,12 +7,12 @@ import mongoose from 'mongoose'
 //Create Attribute
 export const createAttribute = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, values=[] } = req.body;
     if (!name) return res.status(400).json({ message: "Name is required" });
 
-    const slug = generateSlug(name);
-    const attribute = await Attribute.create({ name, slug });
-
+      const slug = generateSlug(name);
+    const attribute = new Attribute({ name, slug, values});
+    await attribute.save();
     res.status(201).json({ message: "Attribute created", attribute });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -68,16 +68,44 @@ export const getAttributeById = async (req, res) => {
 
 //Update Attribute
 export const updateAttribute = async (req, res) => {
-  try {
-    const { name } = req.body;
-    const attribute = await Attribute.findOne({_id:req.params.id});
+   try {
+    const { name, values } = req.body;
+    const attribute = await Attribute.findOne({ _id: req.params.id });
 
-    if (!attribute || attribute.isDeleted)
+    if (!attribute || attribute.isDeleted) {
       return res.status(404).json({ message: "Attribute not found" });
+    }
 
+    // Update attribute name + slug
     if (name) {
       attribute.name = name;
-      attribute.slug = generateSlug(name);
+      attribute.slug = slugify(name, { lower: true, strict: true });
+    }
+
+    // Update values if provided
+    if (Array.isArray(values)) {
+      values.forEach((val) => {
+        if (val._id) {
+          // Existing value → update
+          const existingValue = attribute.values.id(val._id);
+          if (existingValue) {
+            if (val.value) {
+              existingValue.value = val.value;
+              existingValue.slug = slugify(val.value, { lower: true, strict: true });
+            }
+            if (typeof val.isDeleted === "boolean") {
+              existingValue.isDeleted = val.isDeleted;
+            }
+          }
+        } else {
+          // New value → push
+          attribute.values.push({
+            value: val.value,
+            slug: slugify(val.value, { lower: true, strict: true }),
+            isDeleted: val.isDeleted ?? false
+          });
+        }
+      });
     }
 
     await attribute.save();
