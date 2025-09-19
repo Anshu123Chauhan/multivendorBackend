@@ -61,29 +61,115 @@ export const createProduct = async (req, res) => {
 
 export const getProducts = async (req, res) => {
   try {
-    let { page = 1, limit = 10, search = "", sortBy = "createdAt", order = "desc" } = req.query;
+ let { page = 1, limit = 10, search = "", sort = "createdAt", order = "desc" } = req.query;
     page = parseInt(page);
     limit = parseInt(limit);
+    const skip = (page - 1) * limit;
 
-    const baseQuery = { isDeleted: false };
-    if (search) {
-      baseQuery.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { "variants.sku": { $regex: search, $options: "i" } },
-        { sku: { $regex: search, $options: "i" } },
-      ];
-    }
+    const sortObj = {};
+    sortObj[sort] = order === "asc" ? 1 : -1;
 
-    const total = await Product.countDocuments(baseQuery);
-    const data = await Product.find(baseQuery)
-      .populate("category", "name")  
-      .populate("subCategory", "name") 
-      .populate("brand", "name")
-      .sort({ [sortBy]: order === "desc" ? -1 : 1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
+    const products = await Product.aggregate([
+      {
+        $match: {
+          isDeleted: false,
+          name: { $regex: search, $options: "i" }
+        }
+      },
 
-    res.json({ total, page, limit, data });
+      // Lookup attributes
+      {
+        $lookup: {
+          from: "attributes",
+          localField: "variants.attributes.attribute",
+          foreignField: "_id",
+          as: "attributeDocs"
+        }
+      },
+
+      // Populate variant attributes
+      {
+        $addFields: {
+          variants: {
+            $map: {
+              input:{ $ifNull: ["$variants", []] },
+              as: "variant",
+              in: {
+                $mergeObjects: [
+                  "$$variant",
+                  {
+                    attributes: {
+                      $map: {
+                        input: { $ifNull: ["$$variant.attributes", []] },
+                        as: "va",
+                        in: {
+                          attribute: {
+                            $arrayElemAt: [
+                              {
+                                $filter: {
+                                  input: "$attributeDocs",
+                                  cond: { $eq: ["$$this._id", "$$va.attribute"] }
+                                }
+                              },
+                              0
+                            ]
+                          },
+                          value: {
+                            $arrayElemAt: [
+                              {
+                                $filter: {
+                                  input: {
+                                    $arrayElemAt: [
+                                      {
+                                        $filter: {
+                                          input: "$attributeDocs",
+                                          cond: { $eq: ["$$this._id", "$$va.attribute"] }
+                                        }
+                                      },
+                                      0
+                                    ]
+                                  }.values,
+                                  cond: { $eq: ["$$this._id", "$$va.value"] }
+                                }
+                              },
+                              0
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+
+      // Remove helper docs
+      { $unset: "attributeDocs" },
+
+      // Sorting
+      { $sort: sortObj },
+
+      // Pagination
+      { $skip: skip },
+      { $limit: limit }
+    ]);
+
+    // Get total count (for frontend pagination UI)
+    const total = await Product.countDocuments({
+      isDeleted: false,
+      name: { $regex: search, $options: "i" }
+    });
+
+    res.json({
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      products
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -91,12 +177,94 @@ export const getProducts = async (req, res) => {
 
 export const getProduct = async (req, res) => {
   try {
-    const product = await Product.findOne({ _id: req.params.id, isDeleted: false })
-      .populate("category", "name")  
-      .populate("subCategory", "name") 
-      .populate("brand", "name");
-    if (!product) return res.status(404).json({ message: "Product not found" });
-    res.json(product);
+  const { id } = req.params;
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid product id" });
+    }
+
+    const product = await Product.aggregate([
+      { $match: { _id: new mongoose.Types.ObjectId(id), isDeleted: false } },
+
+      // Lookup attributes
+      {
+        $lookup: {
+          from: "attributes",
+          localField: "variants.attributes.attribute",
+          foreignField: "_id",
+          as: "attributeDocs"
+        }
+      },
+
+      // Replace variant attributes with populated data
+      {
+        $addFields: {
+          variants: {
+            $map: {
+              input: "$variants",
+              as: "variant",
+              in: {
+                $mergeObjects: [
+                  "$$variant",
+                  {
+                    attributes: {
+                      $map: {
+                        input: "$$variant.attributes",
+                        as: "va",
+                        in: {
+                          attribute: {
+                            $arrayElemAt: [
+                              {
+                                $filter: {
+                                  input: "$attributeDocs",
+                                  cond: { $eq: ["$$this._id", "$$va.attribute"] }
+                                }
+                              },
+                              0
+                            ]
+                          },
+                          value: {
+                            $arrayElemAt: [
+                              {
+                                $filter: {
+                                  input: {
+                                    $arrayElemAt: [
+                                      {
+                                        $filter: {
+                                          input: "$attributeDocs",
+                                          cond: { $eq: ["$$this._id", "$$va.attribute"] }
+                                        }
+                                      },
+                                      0
+                                    ]
+                                  }.values,
+                                  cond: { $eq: ["$$this._id", "$$va.value"] }
+                                }
+                              },
+                              0
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+
+      // Clean attributeDocs from output
+      { $unset: "attributeDocs" }
+    ]);
+
+    if (!product || product.length === 0) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    res.json(product[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
