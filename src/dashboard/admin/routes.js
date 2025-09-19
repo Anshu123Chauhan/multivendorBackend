@@ -1,6 +1,6 @@
 import express from 'express';
 import { sellerRegister, sellerListing, userRegister, assignRoleAndPermission, adminRegister, userGet, userList,
-    userUpdate, userDelete, getRoleAndPermission, updateRoleAndPermission, deleteRoleAndPermission } from './controller/index.js';
+    userUpdate, userDelete, getRoleAndPermissions, getRoleAndPermission, updateRoleAndPermission, deleteRoleAndPermission } from './controller/index.js';
 
 const router = express.Router();
 
@@ -13,7 +13,8 @@ router.get('/user-list', userList);
 router.put('/user-update/:id', userUpdate);
 router.delete('/user-delete/:id', userDelete);
 router.post('/role-permission', assignRoleAndPermission);
-router.get('/role-permission', getRoleAndPermission);
+router.get('/role-permission', getRoleAndPermissions);
+router.get('/role-permission/:id', getRoleAndPermission);
 router.put('/role-permission/:id', updateRoleAndPermission);
 router.delete('/role-permission/:id', deleteRoleAndPermission);
 
