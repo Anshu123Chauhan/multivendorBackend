@@ -45,11 +45,8 @@ const ProductSchema = new mongoose.Schema(
     },
     status: { type: String, default: "draft" },            // e.g. draft/active
     category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
-    catname:{type: String,},
-    subCategory: { type: mongoose.Schema.Types.ObjectId, ref: "SubCategory" },
-    subcatname:{type: String,},
+    subCategory: { type: mongoose.Schema.Types.ObjectId, ref: "Subcategory" },
     brand: { type: mongoose.Schema.Types.ObjectId, ref: "Brand" },
-    brandname:{type: String},
     sellingPrice: { type: Number, default: 0 },
     mrp: { type: Number, default: 0 },
     sku: { type: String },     // optional product-level SKU
