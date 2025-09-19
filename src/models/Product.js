@@ -13,20 +13,25 @@ const VariantSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    mrp: { type: Number},
+    mrp: { type: Number },
     stock: {
       type: Number,
       default: 0,
     },
     images: {
-      type: [String],     // <-- multiple image URL strings for each variant
+      type: [String], // <-- multiple image URL strings for each variant
       default: [],
     },
-    attributes: {
-      type: Map,          // flexible key-value pairs, e.g. { color: "red", size: "M" }
-      of: String,
-      default: {},
-    },
+    attributes: [
+      {
+        attribute: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Attribute",
+          required: true,
+        },
+        value: { type: mongoose.Schema.Types.ObjectId, required: true }, // one of attribute.values
+      },
+    ],
     isDeleted: {
       type: Boolean,
       default: false,
@@ -37,26 +42,26 @@ const VariantSchema = new mongoose.Schema(
 
 const ProductSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },    // Title / Name
+    name: { type: String, required: true, trim: true }, // Title / Name
     description: { type: String },
     images: {
-      type: [String],    // <-- multiple image URL strings for the product
+      type: [String], // <-- multiple image URL strings for the product
       default: [],
     },
-    status: { type: String, default: "draft" },            // e.g. draft/active
+    status: { type: String, default: "draft" }, // e.g. draft/active
     category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
     subCategory: { type: mongoose.Schema.Types.ObjectId, ref: "Subcategory" },
     brand: { type: mongoose.Schema.Types.ObjectId, ref: "Brand" },
     sellingPrice: { type: Number, default: 0 },
     mrp: { type: Number, default: 0 },
-    sku: { type: String },     // optional product-level SKU
+    sku: { type: String }, // optional product-level SKU
     inventory: { type: Number, default: 0 }, // optional aggregated stock
     tags: { type: [String], default: [] },
-    vendor: { type: mongoose.Schema.Types.ObjectId},
+    vendor: { type: mongoose.Schema.Types.ObjectId },
     variants: [VariantSchema], // embedded variants (each variant has its own images)
     isDeleted: { type: Boolean, default: false },
-    usertype: {type: String},
-    slug: {type: String,trim: true, index: true, unique: true}
+    usertype: { type: String },
+    slug: { type: String, trim: true, index: true, unique: true },
   },
   { timestamps: true }
 );
