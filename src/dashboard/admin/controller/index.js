@@ -316,7 +316,7 @@ export const assignRoleAndPermission = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
-export const getRoleAndPermission = async (req, res) => {
+export const getRoleAndPermissions = async (req, res) => {
   try {
     const user = req.user;
 
@@ -335,6 +335,30 @@ export const getRoleAndPermission = async (req, res) => {
     res.json({
       success: true,
       data: roleWithPermissions,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+export const getRoleAndPermission = async (req, res) => {
+  try {
+    const activeUser = req.user;
+    const {id} = req.params;
+
+    if (activeUser.userType !== "Seller" && activeUser.userType !== "Admin") {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          error: "Only sellers/admin can edit users",
+        });
+    }
+    const role = await Role.findById(id).select("-__v").lean();
+    const permissions = await Permission.find({ role_id: role._id }).select("-__v").lean();
+    const data = {roleName: role.role_name, permissions };
+    res.json({
+      success: true,
+      data
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
