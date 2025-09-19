@@ -21,7 +21,7 @@ export const createProduct = async (req, res) => {
       category,
       catname,
       subCategory,
-      subcatename,
+      subcatname,
       brand,
       brandname,
       sellingPrice,
