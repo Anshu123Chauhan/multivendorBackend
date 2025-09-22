@@ -155,4 +155,74 @@ export const restoreAttribute = async(req,res, next)=>{
   }
 }
 
+export const bulkCreateAttributes = async (req, res) => {
+  try {
+    let { attributes } = req.body;
+
+    if (!Array.isArray(attributes)) {
+      return res.status(400).json({ message: "attributes must be an array" });
+    }
+
+    // Normalize attributes and generate slugs
+    attributes = attributes.map(attr => {
+      const attrSlug = slugify(attr.name, { lower: true, strict: true });
+      return {
+        ...attr,
+        slug: attrSlug,
+        values: (attr.values || []).map(v => {
+          const val = typeof v === "string" ? v : v.value;
+          return {
+            value: val,
+            slug: slugify(val, { lower: true, strict: true }),
+            isDeleted: false,
+          };
+        }),
+        isActive: attr.isActive ?? true,
+        isDeleted: attr.isDeleted ?? false,
+      };
+    });
+
+    // Request-level duplicate check
+    const seenAttrSlugs = new Set();
+    for (const attr of attributes) {
+      if (seenAttrSlugs.has(attr.slug)) {
+        return res.status(400).json({ message: `Duplicate attribute in request: ${attr.name}` });
+      }
+      seenAttrSlugs.add(attr.slug);
+
+      const seenValueSlugs = new Set();
+      for (const v of attr.values) {
+        if (seenValueSlugs.has(v.slug)) {
+          return res.status(400).json({ message: `Duplicate value "${v.value}" in attribute "${attr.name}"` });
+        }
+        seenValueSlugs.add(v.slug);
+      }
+    }
+
+    //Use save() instead of insertMany so hooks & unique errors are handled cleanly
+    const inserted = [];
+    for (const attr of attributes) {
+      try {
+        const doc = new Attribute(attr);
+        const saved = await doc.save();
+        inserted.push(saved);
+      } catch (err) {
+        if (err.code === 11000) {
+          console.warn(`Skipped duplicate attribute: ${attr.name}`);
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    res.status(201).json({
+      message: "Bulk attributes processed",
+      data: inserted,
+    });
+  } catch (error) {
+    console.error("Bulk create error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
