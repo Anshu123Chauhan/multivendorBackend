@@ -225,4 +225,69 @@ export const bulkCreateAttributes = async (req, res) => {
   }
 };
 
+export const bulkUpsertAttributes = async (req, res) => {
+  try {
+    let { attributes } = req.body;
+
+    if (!Array.isArray(attributes)) {
+      return res.status(400).json({ message: "attributes must be an array" });
+    }
+
+    const results = [];
+
+    for (const attr of attributes) {
+      const attrSlug = slugify(attr.name, { lower: true, strict: true });
+
+      // Find if attribute already exists
+      let existingAttr = await Attribute.findOne({ slug: attrSlug, isDeleted: false });
+
+      if (existingAttr) {
+        // Normalize incoming values
+        const newValues = (attr.values || []).map(v =>
+          typeof v === "string" ? { value: v, slug: slugify(v, { lower: true, strict: true }) } : {
+            ...v,
+            slug: slugify(v.value, { lower: true, strict: true })
+          }
+        );
+
+        // Build a set of existing value slugs
+        const existingSlugs = new Set(existingAttr.values.map(v => v.slug));
+
+        // Only add new unique values
+        for (const v of newValues) {
+          if (!existingSlugs.has(v.slug)) {
+            existingAttr.values.push(v);
+          }
+        }
+
+        await existingAttr.save();
+        results.push({ action: "updated", attribute: existingAttr });
+      } else {
+        // Create new attribute
+        const normalized = {
+          name: attr.name,
+          slug: attrSlug,
+          values: (attr.values || []).map(v =>
+            typeof v === "string" ? { value: v, slug: slugify(v, { lower: true, strict: true }) } : {
+              ...v,
+              slug: slugify(v.value, { lower: true, strict: true })
+            }
+          )
+        };
+        const created = await Attribute.create(normalized);
+        results.push({ action: "created", attribute: created });
+      }
+    }
+
+    res.status(200).json({
+      message: "Bulk upsert completed",
+      data: results,
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 

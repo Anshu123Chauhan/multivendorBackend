@@ -8,7 +8,6 @@ import "winston-daily-rotate-file";
 import swaggerUi from "swagger-ui-express";
 import cors from 'cors';
 import swaggerDocument from "./swagger-output.json" with { type: "json" };
-import website from './website/routes.js';
 
 dotenv.config();
 const app = express();
@@ -49,7 +48,7 @@ app.use(
 );
 app.use("/uploads", express.static("uploads"));
 app.use('/api', routes);
-app.use('/ui',website)
+
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.get('/', (req, res) => res.send('ECOM-Multivendor server is running'));
 
