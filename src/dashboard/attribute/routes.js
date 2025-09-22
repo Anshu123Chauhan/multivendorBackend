@@ -7,7 +7,8 @@ import {
   updateAttribute,
   deleteAttribute,
   restoreAttribute,
-  bulkCreateAttributes
+  bulkCreateAttributes,
+  bulkUpsertAttributes
 } from "./controller/index.js";
 
 const router = express.Router();
@@ -19,5 +20,6 @@ router.put("/:id", updateAttribute);
 router.delete("/:id", deleteAttribute);
 router.patch("/:id", restoreAttribute);
 router.post("/bulk",bulkCreateAttributes);
+router.put('/:id/bulkupdate',bulkUpsertAttributes)
 
 export default router;
