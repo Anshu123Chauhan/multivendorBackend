@@ -7,9 +7,10 @@ import category from './category/routers.js'
 import brand from './brand/routes.js'
 import product from './product/routes.js'
 import attribute from './attribute/routes.js'
-
+import ecommerce from '../ecommerce/routes.js'
 const router = express.Router();
 router.use('/auth', auth);
+router.use('/ecommerce', ecommerce);
 router.use('/admin', authenticate, admin);
 router.use('/seller', seller);
 router.use('/admin/category', authenticate, category)
