@@ -22,7 +22,6 @@ export const login = async (req, res) => {
   }
 };
 
-
 export const customerRegister =  async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
@@ -64,3 +63,27 @@ export const customerRegister =  async (req, res) => {
   }
 };
 
+export const customerPasswordUpdate = async (req, res) => {
+  try {
+    const customer = await Customer.findById(req.user._id);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: "Customer not found" });
+    }
+
+    const { password } = req.body;
+    if (!password) {
+      return res.status(400).json({ success: false, message: "Password is required" });
+    }
+
+    customer.password = password; 
+    await customer.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    console.error("Error in password update API:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};

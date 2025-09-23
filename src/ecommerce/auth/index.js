@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import Customer from '../models/customer.js';
+import Customer from '../../models/customer.js';
 
 export const authenticate = async (req, res, next) => {
   try {
@@ -7,8 +7,9 @@ export const authenticate = async (req, res, next) => {
     if (!token) return res.status(401).json({ error: 'No token' });
     const customer = jwt.verify(token, process.env.JWT_SECRET);
     const email = customer.email;
-    data = await Customer.findOne({ email });
+    const data = await Customer.findOne({ email });
     if (!data) return res.status(401).json({ error: 'Customer not found' });
+    req.user = data;
     next();
   } catch (err) {
     console.error(err);
