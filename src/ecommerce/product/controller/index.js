@@ -2,7 +2,6 @@ import express from 'express'
 import Brand from '../../../models/Brand.js';
 import {Category,Subcategory} from '../../../models/Category.js';
 import {Product} from '../../../models/Product.js';
-import Attribute from '../../../models/Attribute.js';
 
 export const productFetch =  async (req, res) => {
   try {
