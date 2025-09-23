@@ -22,16 +22,11 @@ const VariantSchema = new mongoose.Schema(
       type: [String], // <-- multiple image URL strings for each variant
       default: [],
     },
-    attributes: [
-      {
-        attribute: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Attribute",
-          required: true,
-        },
-        value: { type: mongoose.Schema.Types.ObjectId, required: true }, // one of attribute.values
-      },
-    ],
+    attributes: {
+      type: Map, // flexible key-value pairs, e.g. { color: "red", size: "M" }
+      of: String,
+      default: {},
+    },
     isDeleted: {
       type: Boolean,
       default: false,
