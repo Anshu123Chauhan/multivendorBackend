@@ -30,9 +30,9 @@ export const getAttributes = async (req, res) => {
     if (req.query.q) q.name = { $regex: req.query.q, $options: 'i' };
     if (typeof req.query.isActive !== 'undefined') q.isActive = req.query.isActive === 'true';
 
-    // includeDeleted explicit override
-    if (req.query.includeDeleted === 'true') {
-      q.isDeleted = { $in: [true, false] };
+    // includeDeleted explicit
+    if (req.query.includeDeleted === 'false') {
+      q.isDeleted = { $in: [false] };
     }
 
     const [data, total] = await Promise.all([
