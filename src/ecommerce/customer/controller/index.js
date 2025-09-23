@@ -1,6 +1,8 @@
 import { signToken } from '../../../middleware/auth.js';
+import { sendMail } from '../../../middleware/sendMail.js';
 import Customer from '../../../models/customer.js';
-
+import CustomerOtp from '../../../models/customerOtp.js';
+import mongoose from 'mongoose';
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -59,7 +61,23 @@ export const customerRegister =  async (req, res) => {
     });
   } catch (error) {
     console.error("Error in register API:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: messages,
+      });
+    }
+
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({
+        success: false,
+        message: `${field} already exists`,
+      });
+    }
+    res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
 
@@ -84,6 +102,207 @@ export const customerPasswordUpdate = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in password update API:", error);
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: messages,
+      });
+    }
     res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+export const sentOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const customer = await Customer.findOne({email});
+    if (!customer) {
+      return res.status(404).json({ success: false, message: "Customer not found" });
+    }
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); 
+    await CustomerOtp.findOneAndUpdate(
+      { customerId: customer._id }, 
+      { otp, expiresAt, verified: false },
+      { upsert: true, new: true }
+    );
+    const subject = "Your One-Time Password (OTP) for Verification"
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+      <meta charset="UTF-8" />
+      <title>Your OTP Code</title>
+      <style>
+          body {
+          font-family: Arial, sans-serif;
+          background-color: #f4f4f7;
+          margin: 0;
+          padding: 0;
+          }
+          .container {
+          max-width: 600px;
+          margin: 30px auto;
+          background: #ffffff;
+          border-radius: 8px;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          padding: 30px;
+          }
+          .header {
+          text-align: center;
+          border-bottom: 1px solid #eee;
+          padding-bottom: 10px;
+          }
+          .header h2 {
+          color: #333;
+          }
+          .content {
+          text-align: center;
+          padding: 20px 10px;
+          }
+          .otp-box {
+          display: inline-block;
+          font-size: 28px;
+          font-weight: bold;
+          color: #ffffff;
+          background: #007bff;
+          padding: 12px 25px;
+          border-radius: 6px;
+          letter-spacing: 5px;
+          margin: 20px 0;
+          }
+          .footer {
+          text-align: center;
+          font-size: 12px;
+          color: #999;
+          margin-top: 20px;
+          }
+      </style>
+      </head>
+      <body>
+      <div class="container">
+          <div class="header">
+          <h2>OTP Verification</h2>
+          </div>
+          <div class="content">
+          <p>Hi <strong>${customer.name}</strong>,</p>
+          <p>Use the following OTP to verify your email:</p>
+          <div class="otp-box">${otp}</div>
+          <p>This OTP is valid for <strong>5 minutes</strong>. Do not share it with anyone.</p>
+          </div>
+          <div class="footer">
+          <p>If you didn’t request this, please ignore this email.</p>
+          <p>&copy; ${new Date().getFullYear()} Ens Enterpries Ltd.</p>
+          </div>
+      </div>
+      </body>
+      </html>
+    `;
+    await sendMail(html, subject, email);
+    res.status(200).json({
+      success: true,
+      message: "Otp sent successfully",
+    });
+  } catch (error) {
+    console.error("Error in sent otp API:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+export const verifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP are required",
+      });
+    }
+
+    const customer = await Customer.findOne({ email });
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    const verifyOtp = await CustomerOtp.findOneAndUpdate(
+      { customerId: customer._id, otp, verified: false },
+      { $set: { verified: true } },
+      { new: true }
+    );
+
+    if (!verifyOtp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "OTP verified successfully",
+      data: { otpId: verifyOtp._id },
+    });
+  } catch (error) {
+    console.error("Error in verifyOtp API:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+export const updateForgetPassword = async (req, res) => {
+  try {
+    const { email, password, otpId } = req.body;
+
+    if (!email || !password || !otpId) {
+      return res.status(400).json({
+        success: false,
+        message: "Email, password, and otpId are required",
+      });
+    }
+
+    const customer = await Customer.findOne({ email });
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    const verifyOtp = await CustomerOtp.findOneAndDelete({_id: new mongoose.Types.ObjectId(otpId) ,customerId: customer._id});
+    if (!verifyOtp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP",
+      });
+    }
+    customer.password = password;
+    await customer.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    console.error("Error in updateForgetPassword API:", error);
+
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: messages,
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
