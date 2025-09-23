@@ -10,7 +10,7 @@ export const createAttribute = async (req, res) => {
     const { name, values=[] } = req.body;
     if (!name) return res.status(400).json({ message: "Name is required" });
 
-      const slug = generateSlug(name);
+    const slug = generateSlug(name);
     const attribute = new Attribute({ name, slug, values});
     await attribute.save();
     res.status(201).json({ message: "Attribute created", attribute });
@@ -331,6 +331,36 @@ export const deleteAttributeValue = async (req, res) => {
     });
   } catch (error) {
     console.error("Delete attribute value error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+export const restoreAttributeValue = async (req, res) => {
+  try {
+    const { attributeId, valueId } = req.params;
+
+    // Find the attribute
+    const attribute = await Attribute.findById(attributeId);
+    if (!attribute) {
+      return res.status(404).json({ message: "Attribute not found" });
+    }
+
+    // Find value inside the attribute
+    const value = attribute.values.id(valueId);
+    if (!value) {
+      return res.status(404).json({ message: "Attribute value not found" });
+    }
+
+    // Restore (soft deleted → active again)
+    value.isDeleted = false;
+
+    await attribute.save();
+
+    res.status(200).json({
+      message: "Attribute value restored successfully",
+      attribute,
+    });
+  } catch (error) {
+    console.error("Restore attribute value error:", error);
     res.status(500).json({ message: error.message });
   }
 };

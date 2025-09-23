@@ -26,4 +26,11 @@ attributeSchema.pre("save", function (next) {
   next();
 });
 
+attributeValueSchema.pre("save", function (next) {
+  if (this.value && (!this.slug || this.isModified("value"))) {
+    this.slug = slugify(this.value, { lower: true, strict: true });
+  }
+  next();
+});
+
 export default mongoose.model("Attribute", attributeSchema);
