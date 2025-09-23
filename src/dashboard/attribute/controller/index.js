@@ -155,7 +155,77 @@ export const restoreAttribute = async(req,res, next)=>{
   }
 }
 
-export const bulkCreateAttributes = async (req, res) => {
+// export const bulkCreateAttributes = async (req, res) => {
+//   try {
+//     let { attributes } = req.body;
+
+//     if (!Array.isArray(attributes)) {
+//       return res.status(400).json({ message: "attributes must be an array" });
+//     }
+
+//     // Normalize attributes and generate slugs
+//     attributes = attributes.map(attr => {
+//       const attrSlug = slugify(attr.name, { lower: true, strict: true });
+//       return {
+//         ...attr,
+//         slug: attrSlug,
+//         values: (attr.values || []).map(v => {
+//           const val = typeof v === "string" ? v : v.value;
+//           return {
+//             value: val,
+//             slug: slugify(val, { lower: true, strict: true }),
+//             isDeleted: false,
+//           };
+//         }),
+//         isActive: attr.isActive ?? true,
+//         isDeleted: attr.isDeleted ?? false,
+//       };
+//     });
+
+//     // Request-level duplicate check
+//     const seenAttrSlugs = new Set();
+//     for (const attr of attributes) {
+//       if (seenAttrSlugs.has(attr.slug)) {
+//         return res.status(400).json({ message: `Duplicate attribute in request: ${attr.name}` });
+//       }
+//       seenAttrSlugs.add(attr.slug);
+
+//       const seenValueSlugs = new Set();
+//       for (const v of attr.values) {
+//         if (seenValueSlugs.has(v.slug)) {
+//           return res.status(400).json({ message: `Duplicate value "${v.value}" in attribute "${attr.name}"` });
+//         }
+//         seenValueSlugs.add(v.slug);
+//       }
+//     }
+
+//     //Use save() instead of insertMany so hooks & unique errors are handled cleanly
+//     const inserted = [];
+//     for (const attr of attributes) {
+//       try {
+//         const doc = new Attribute(attr);
+//         const saved = await doc.save();
+//         inserted.push(saved);
+//       } catch (err) {
+//         if (err.code === 11000) {
+//           console.warn(`Skipped duplicate attribute: ${attr.name}`);
+//           continue;
+//         }
+//         throw err;
+//       }
+//     }
+
+//     res.status(201).json({
+//       message: "Bulk attributes processed",
+//       data: inserted,
+//     });
+//   } catch (error) {
+//     console.error("Bulk create error:", error);
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+export const bulkUpsertAttributes = async (req, res) => {
   try {
     let { attributes } = req.body;
 
@@ -166,128 +236,101 @@ export const bulkCreateAttributes = async (req, res) => {
     // Normalize attributes and generate slugs
     attributes = attributes.map(attr => {
       const attrSlug = slugify(attr.name, { lower: true, strict: true });
+
+      // filter duplicate values inside same request
+      const seenValueSlugs = new Set();
+      const cleanedValues = [];
+
+      for (const v of attr.values || []) {
+        const val = typeof v === "string" ? v : v.value;
+        const valSlug = slugify(val, { lower: true, strict: true });
+
+        if (!seenValueSlugs.has(valSlug)) {
+          seenValueSlugs.add(valSlug);
+          cleanedValues.push({
+            value: val,
+            slug: valSlug,
+            isDeleted: false,
+          });
+        }
+      }
+
       return {
         ...attr,
         slug: attrSlug,
-        values: (attr.values || []).map(v => {
-          const val = typeof v === "string" ? v : v.value;
-          return {
-            value: val,
-            slug: slugify(val, { lower: true, strict: true }),
-            isDeleted: false,
-          };
-        }),
+        values: cleanedValues,
         isActive: attr.isActive ?? true,
         isDeleted: attr.isDeleted ?? false,
       };
     });
 
-    // Request-level duplicate check
-    const seenAttrSlugs = new Set();
-    for (const attr of attributes) {
-      if (seenAttrSlugs.has(attr.slug)) {
-        return res.status(400).json({ message: `Duplicate attribute in request: ${attr.name}` });
-      }
-      seenAttrSlugs.add(attr.slug);
-
-      const seenValueSlugs = new Set();
-      for (const v of attr.values) {
-        if (seenValueSlugs.has(v.slug)) {
-          return res.status(400).json({ message: `Duplicate value "${v.value}" in attribute "${attr.name}"` });
-        }
-        seenValueSlugs.add(v.slug);
-      }
-    }
-
-    //Use save() instead of insertMany so hooks & unique errors are handled cleanly
-    const inserted = [];
-    for (const attr of attributes) {
-      try {
-        const doc = new Attribute(attr);
-        const saved = await doc.save();
-        inserted.push(saved);
-      } catch (err) {
-        if (err.code === 11000) {
-          console.warn(`Skipped duplicate attribute: ${attr.name}`);
-          continue;
-        }
-        throw err;
-      }
-    }
-
-    res.status(201).json({
-      message: "Bulk attributes processed",
-      data: inserted,
-    });
-  } catch (error) {
-    console.error("Bulk create error:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-export const bulkUpsertAttributes = async (req, res) => {
-  try {
-    let { attributes } = req.body;
-
-    if (!Array.isArray(attributes)) {
-      return res.status(400).json({ message: "attributes must be an array" });
-    }
-
     const results = [];
 
     for (const attr of attributes) {
-      const attrSlug = slugify(attr.name, { lower: true, strict: true });
+      let existing = await Attribute.findOne({ slug: attr.slug });
 
-      // Find if attribute already exists
-      let existingAttr = await Attribute.findOne({ slug: attrSlug, isDeleted: false });
-
-      if (existingAttr) {
-        // Normalize incoming values
-        const newValues = (attr.values || []).map(v =>
-          typeof v === "string" ? { value: v, slug: slugify(v, { lower: true, strict: true }) } : {
-            ...v,
-            slug: slugify(v.value, { lower: true, strict: true })
-          }
+      if (existing) {
+        const existingValueSlugs = new Set(
+          existing.values.map(v => slugify(v.value, { lower: true, strict: true }))
         );
 
-        // Build a set of existing value slugs
-        const existingSlugs = new Set(existingAttr.values.map(v => v.slug));
-
-        // Only add new unique values
-        for (const v of newValues) {
-          if (!existingSlugs.has(v.slug)) {
-            existingAttr.values.push(v);
+        for (const v of attr.values) {
+          if (!existingValueSlugs.has(v.slug)) {
+            existing.values.push(v);
           }
         }
 
-        await existingAttr.save();
-        results.push({ action: "updated", attribute: existingAttr });
+        existing.isActive = attr.isActive;
+        existing.isDeleted = attr.isDeleted;
+
+        await existing.save();
+        results.push({ action: "updated", attribute: existing });
       } else {
-        // Create new attribute
-        const normalized = {
-          name: attr.name,
-          slug: attrSlug,
-          values: (attr.values || []).map(v =>
-            typeof v === "string" ? { value: v, slug: slugify(v, { lower: true, strict: true }) } : {
-              ...v,
-              slug: slugify(v.value, { lower: true, strict: true })
-            }
-          )
-        };
-        const created = await Attribute.create(normalized);
+        const created = await Attribute.create(attr);
         results.push({ action: "created", attribute: created });
       }
     }
 
     res.status(200).json({
-      message: "Bulk upsert completed",
+      message: "Bulk upsert processed successfully",
       data: results,
     });
-
   } catch (error) {
-    console.error(error);
+    console.error("Bulk upsert error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
+export const deleteAttributeValue = async (req, res) => {
+  try {
+    const { attributeId, valueId } = req.params;
 
+    // Find the attribute
+    const attribute = await Attribute.findById(attributeId);
+    if (!attribute) {
+      return res.status(404).json({ message: "Attribute not found" });
+    }
+
+    // Find value inside the attribute
+    const value = attribute.values.id(valueId);
+    if (!value) {
+      return res.status(404).json({ message: "Attribute value not found" });
+    }
+
+    // Soft delete (recommended)
+    value.isDeleted = true;
+
+    // OR hard delete (permanently remove)
+    // attribute.values.id(valueId).remove();
+
+    await attribute.save();
+
+    res.status(200).json({
+      message: "Attribute value deleted successfully",
+      attribute,
+    });
+  } catch (error) {
+    console.error("Delete attribute value error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
