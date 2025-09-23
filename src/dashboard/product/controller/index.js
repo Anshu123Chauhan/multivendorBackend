@@ -60,7 +60,7 @@ export const createProduct = async (req, res) => {
 };
 
 export const getProducts = async (req, res) => {
-   try {
+  try {
     let { page = 1, limit = 10, search = "", sortBy = "createdAt", order = "desc" } = req.query;
     page = parseInt(page);
     limit = parseInt(limit);
@@ -76,6 +76,9 @@ export const getProducts = async (req, res) => {
 
     const total = await Product.countDocuments(baseQuery);
     const data = await Product.find(baseQuery)
+      .populate("category", "name")  
+      .populate("subCategory", "name") 
+      .populate("brand", "name")
       .sort({ [sortBy]: order === "desc" ? -1 : 1 })
       .skip((page - 1) * limit)
       .limit(limit);
@@ -88,18 +91,17 @@ export const getProducts = async (req, res) => {
 
 export const getProduct = async (req, res) => {
   try {
-  const { id } = req.params;
-    // Validate ObjectId
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "Invalid product id" });
-    }
-    const product = await Product.findOne({ _id: req.params.id, isDeleted: false });
+    const product = await Product.findOne({ _id: req.params.id, isDeleted: false })
+      .populate("category", "name")  
+      .populate("subCategory", "name") 
+      .populate("brand", "name");
     if (!product) return res.status(404).json({ message: "Product not found" });
     res.json(product);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 export const updateProduct = async (req, res) => {
   try {
