@@ -64,8 +64,18 @@ export const getProducts = async (req, res) => {
     let { page = 1, limit = 10, search = "", sortBy = "createdAt", order = "desc" } = req.query;
     page = parseInt(page);
     limit = parseInt(limit);
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    if(!token) return res.status(401).json({sucess:false, meaasge:"You Are Unauthorized to Access this module"}) 
+    const vendor = decoded._id
+    const usertype = decoded.userType
 
     const baseQuery = { isDeleted: false };
+        // If seller → restrict by vendor
+    if (usertype === "Seller") {
+      baseQuery.vendor = vendor;
+    }
     if (search) {
       baseQuery.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -73,8 +83,8 @@ export const getProducts = async (req, res) => {
         { sku: { $regex: search, $options: "i" } },
       ];
     }
-
-    const total = await Product.countDocuments(baseQuery);
+ 
+      const total = await Product.countDocuments(baseQuery);
     const data = await Product.find(baseQuery)
       .populate("category", "name")  
       .populate("subCategory", "name") 
@@ -84,6 +94,7 @@ export const getProducts = async (req, res) => {
       .limit(limit);
 
     res.json({ total, page, limit, data });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
