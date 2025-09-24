@@ -2,6 +2,9 @@ import Admin from '../../../models/admin.js';
 import { signToken } from '../../../middleware/auth.js';
 import Seller from '../../../models/Seller.js';
 import User from '../../../models/User.js';
+import Permission from '../../../models/Permission.js';
+import Role from '../../../models/Role.js';
+import mongoose from 'mongoose';
 
 export const login = async (req, res) => {
   try {
@@ -24,6 +27,11 @@ export const login = async (req, res) => {
     user = user.toObject();
     delete user.password;
     user.userType = loginType;
+    if(loginType == 'User'){
+      const role = await Role.findById(user.role_id).select("-__v");
+      const permission = await Permission.find({role_id: new mongoose.Types.ObjectId(role._id)}).select("-__v");
+      user.permission = permission;
+    }
     const token = signToken(user);    
     res.json({ success: true, token, message: "login successfully" });
   } catch (err) {

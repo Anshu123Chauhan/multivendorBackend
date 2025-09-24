@@ -1,5 +1,5 @@
 import express from 'express';
-import { sellerRegister, sellerListing, userRegister, assignRoleAndPermission, adminRegister, userGet, userList,
+import { sellerRegister, sellerListing, customerListing, userRegister, customerGet, assignRoleAndPermission, adminRegister, userGet, userList,
     userUpdate, userDelete, getRoleAndPermissions, getRoleAndPermission, updateRoleAndPermission, deleteRoleAndPermission } from './controller/index.js';
 
 const router = express.Router();
@@ -7,7 +7,9 @@ const router = express.Router();
 router.post('/register',adminRegister);
 router.post('/seller-register', sellerRegister);
 router.get('/seller-List', sellerListing);
+router.get('/customer-List', customerListing);
 router.post('/user-register', userRegister);
+router.get('/customer-get/:id', customerGet);
 router.get('/user-get/:id', userGet);
 router.get('/user-list', userList);
 router.put('/user-update/:id', userUpdate);
