@@ -1,89 +1,78 @@
-import express from 'express'
 import Brand from '../../../models/Brand.js';
 import {Category,Subcategory} from '../../../models/Category.js';
 import {Product} from '../../../models/Product.js';
 
-export const productFetch =  async (req, res) => {
+export const productsListing = async (req, res) => {
   try {
-    const { brand, category, subcategory, attributes, minPrice, maxPrice, page = 1, limit = 10 } = req.query;
+    const { minPrice, maxPrice, page = 1, limit = 10 } = req.query;
+    const { brand, category, subcategory, attributes } = req.body;
 
     const filter = { isDeleted: false };
-
     if (brand) filter.brand = brand;
     if (category) filter.category = category;
-    if (subcategory) filter.subcategory = subcategory;
-    if (minPrice || maxPrice) filter.price = {};
-    if (minPrice) filter.price.$gte = Number(minPrice);
-    if (maxPrice) filter.price.$lte = Number(maxPrice);
+    if (subcategory) filter.subCategory = subcategory;
 
-    if (attributes) {
-      // attributes = "color:Red,size:XL"
-      const attrs = attributes.split(',').map(a => a.split(':'));
-      filter.attributes = { $all: attrs.map(([key, value]) => ({ $elemMatch: { key, value } })) };
+    if (minPrice || maxPrice) {
+      filter["variants.price"] = {};
+      if (minPrice) filter["variants.price"].$gte = Number(minPrice);
+      if (maxPrice) filter["variants.price"].$lte = Number(maxPrice);
     }
 
-    const skip = (page - 1) * limit;
-    const total = await Product.countDocuments(filter);
-    const products = await Product.find(filter)
-      .populate('brand category subcategory')
+    if (attributes && Array.isArray(attributes) && attributes.length > 0) {
+      filter["$and"] = attributes.map(attr => ({
+        "variants.attributes": {
+          $elemMatch: { type: attr.type, value: attr.value }
+        }
+      }));
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    let products = await Product.find(filter)
       .skip(skip)
-      .limit(Number(limit));
+      .limit(parseInt(limit))
+      .lean();
+
+    products = products.map((p) => {
+      if (p.variants && p.variants.length > 0) {
+        const minVariantPrice = Math.min(...p.variants.map(v => v.price));
+        const maxVariantPrice = Math.max(...p.variants.map(v => v.price));
+        return { ...p, price: { min: minVariantPrice, max: maxVariantPrice } };
+      } else {
+        return { ...p, price: { min: p.sellingPrice, max: p.sellingPrice } };
+      }
+    });
+
+    const total = await Product.countDocuments(filter);
 
     res.json({
+      success: true,
       products,
       pagination: {
         total,
-        page: Number(page),
-        pages: Math.ceil(total / limit)
-      }
+        page: parseInt(page),
+        pages: Math.ceil(total / limit),
+      },
     });
   } catch (err) {
+    console.error("Error in productsListing:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
-export const productFilter = async (req, res) => {
-  try {
-    const brands = await Brand.find({ isDeleted: false });
-    const categories = await Category.find({ isDeleted: false });
-    const subcategories = await Subcategory.find({ isDeleted: false });
-    const attributes = await Product.aggregate([
-      { $unwind: '$attributes' },
-      { $group: { _id: '$attributes.key', values: { $addToSet: '$attributes.value' } } }
-    ]);
-
-    res.json({ brands, categories, subcategories, attributes });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-}
 export const productDetails = async (req, res) => {
   try {
     const { id } = req.params;
-
     const product = await Product.findById(id)
-      .populate("brand category subcategory vendor");
-
+      .populate("brand category subCategory vendor");
     if (!product || product.isDeleted) {
       return res.status(404).json({ error: "Product not found" });
     }
-
-    // Fetch reviews
-    const reviews = await Review.find({ product: id })
-      .populate("user", "name")
-      .sort({ createdAt: -1 });
-
-    // Related products (same category, excluding current)
     const relatedProducts = await Product.find({
       category: product.category,
       _id: { $ne: id },
       isDeleted: false
     }).limit(6);
-
-    // Discounted price calculation
-    const discountedPrice = product.discount
-      ? product.price - (product.price * product.discount) / 100
-      : product.price;
 
     res.json({
       id: product._id,
@@ -91,24 +80,12 @@ export const productDetails = async (req, res) => {
       description: product.description,
       specifications: product.specifications,
       price: product.price,
-      discount: product.discount,
-      finalPrice: discountedPrice,
       stock: product.stock,
       variants: product.variants,
-
       brand: product.brand?.name || null,
       category: product.category?.name || null,
-      subcategory: product.subcategory?.name || null,
-
-      vendor: {
-        id: product.vendor?._id,
-        name: product.vendor?.name,
-        logo: product.vendor?.logo,
-        contactEmail: product.vendor?.contactEmail,
-        contactPhone: product.vendor?.contactPhone,
-      },
-
-      reviews,
+      subcategory: product.subCategory?.name || null,
+      vendor: product.vendor?._id,
       relatedProducts,
     });
   } catch (err) {
