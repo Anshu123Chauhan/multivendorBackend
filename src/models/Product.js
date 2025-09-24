@@ -22,17 +22,25 @@ const VariantSchema = new mongoose.Schema(
       type: [String], // <-- multiple image URL strings for each variant
       default: [],
     },
-    attributes: {
-      type: Map, // flexible key-value pairs, e.g. { color: "red", size: "M" }
-      of: String,
-      default: {},
+   attributes: [
+  {
+    type: {
+      type: String,
+      required: true,
     },
+    value: {
+      type: String,
+      required: true,
+    },
+  },
+],
+
     isDeleted: {
       type: Boolean,
       default: false,
     },
   },
-  { timestamps: true }
+  {_id:false, timestamps: true }
 );
 
 const ProductSchema = new mongoose.Schema(
