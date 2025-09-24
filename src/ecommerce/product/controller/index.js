@@ -63,7 +63,7 @@ export const productsListing = async (req, res) => {
 export const productDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id)
+    const product = await Product.findById(id).lean()
       .populate("brand category subCategory vendor");
     if (!product || product.isDeleted) {
       return res.status(404).json({ error: "Product not found" });
@@ -75,18 +75,8 @@ export const productDetails = async (req, res) => {
     }).limit(6);
 
     res.json({
-      id: product._id,
-      name: product.name,
-      description: product.description,
-      specifications: product.specifications,
-      price: product.price,
-      stock: product.stock,
-      variants: product.variants,
-      brand: product.brand?.name || null,
-      category: product.category?.name || null,
-      subcategory: product.subCategory?.name || null,
-      vendor: product.vendor?._id,
-      relatedProducts,
+      ...product,
+      relatedProducts
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
