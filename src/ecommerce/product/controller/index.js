@@ -7,7 +7,7 @@ export const productsListing = async (req, res) => {
     const { minPrice, maxPrice, page = 1, limit = 10 } = req.query;
     const { brand, category, subcategory, attributes } = req.body;
 
-    const filter = { isDeleted: false };
+    const filter = { isDeleted: false, status: "active" };
     if (brand) filter.brand = brand;
     if (category) filter.category = category;
     if (subcategory) filter.subCategory = subcategory;

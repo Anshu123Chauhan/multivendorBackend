@@ -1,6 +1,42 @@
 import mongoose from "mongoose";
 import bcrypt from 'bcrypt';
 
+const addressSchema = new mongoose.Schema({
+  street: {
+    type: String,
+    required: [true, "Street is required"],
+    trim: true,
+    minlength: [3, "Street must be at least 3 characters long"],
+    maxlength: [100, "Street cannot exceed 100 characters"],
+  },
+  city: {
+    type: String,
+    required: [true, "City is required"],
+    trim: true,
+    minlength: [2, "City must be at least 2 characters long"],
+    maxlength: [50, "City cannot exceed 50 characters"],
+  },
+  state: {
+    type: String,
+    required: [true, "State is required"],
+    trim: true,
+    minlength: [2, "State must be at least 2 characters long"],
+    maxlength: [50, "State cannot exceed 50 characters"],
+  },
+  postalCode: {
+    type: String,
+    required: [true, "Postal code is required"],
+    match: [/^\d{5,6}$/, "Postal code must be 5 or 6 digits"],
+  },
+  country: {
+    type: String,
+    required: [true, "Country is required"],
+    trim: true,
+    minlength: [2, "Country must be at least 2 characters long"],
+    maxlength: [50, "Country cannot exceed 50 characters"],
+  },
+}, {_id:false, timestamps: true });
+
 const customerSchema = new mongoose.Schema(
   {
     name: {
@@ -35,13 +71,13 @@ const customerSchema = new mongoose.Schema(
       minlength: [6, "Password must be at least 6 characters long"],
       validate: {
         validator: function (v) {
-          // At least one uppercase, one lowercase, one number, one special char
           return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/.test(v);
         },
         message:
           "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
       },
     },
+   address: [addressSchema],
   },
   { timestamps: true }
 );

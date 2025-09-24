@@ -80,6 +80,37 @@ export const customerRegister =  async (req, res) => {
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
+export const customerDetail =  async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customer = await Customer.findById(id).select("-__v -password");
+
+    res.status(200).json({
+      success: true,
+      message: "Customer fetch successfully",
+      customer,
+    });
+  } catch (error) {
+    console.error("Error in register API:", error);
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: messages,
+      });
+    }
+
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({
+        success: false,
+        message: `${field} already exists`,
+      });
+    }
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
 
 export const customerPasswordUpdate = async (req, res) => {
   try {
@@ -304,5 +335,61 @@ export const updateForgetPassword = async (req, res) => {
       success: false,
       message: "Server error",
     });
+  }
+};
+
+export const addAddress = async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const { street, city, state, postalCode, country } = req.body;
+
+    const customer = await Customer.findById(customerId);
+    if (!customer) return res.status(404).json({ success: false, error: "Customer not found" });
+
+    customer.addresses.push({ street, city, state, postalCode, country });
+    await customer.save();
+
+    res.json({ success: true, message: "Address added successfully", addresses: customer.addresses });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Update Address
+export const updateAddress = async (req, res) => {
+  try {
+    const { customerId, addressId } = req.params;
+    const updates = req.body;
+
+    const customer = await Customer.findOneAndUpdate(
+      { _id: customerId, "addresses._id": addressId },
+      { $set: { "addresses.$": { _id: new mongoose.Types.ObjectId(addressId), ...updates } } },
+      { new: true, runValidators: true }
+    );
+
+    if (!customer) return res.status(404).json({ success: false, error: "Customer or Address not found" });
+
+    res.json({ success: true, message: "Address updated successfully", addresses: customer.addresses });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Remove Address
+export const removeAddress = async (req, res) => {
+  try {
+    const { customerId, addressId } = req.params;
+
+    const customer = await Customer.findByIdAndUpdate(
+      customerId,
+      { $pull: { addresses: { _id: addressId } } },
+      { new: true }
+    );
+
+    if (!customer) return res.status(404).json({ success: false, error: "Customer or Address not found" });
+
+    res.json({ success: true, message: "Address removed successfully", addresses: customer.addresses });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 };
