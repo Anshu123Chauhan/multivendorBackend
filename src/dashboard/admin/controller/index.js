@@ -3,8 +3,8 @@ import Role from "../../../models/Role.js";
 import Permission from "../../../models/Permission.js";
 import User from "../../../models/User.js";
 import Admin from "../../../models/admin.js";
-import bcrypt from "bcrypt";
 import { mongoose } from "mongoose";
+import Customer from "../../../models/customer.js";
 
 export const adminRegister = async (req, res) => {
   try {
@@ -17,12 +17,10 @@ export const adminRegister = async (req, res) => {
         .json({ error: "Username or Email already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     const admin = new Admin({
       username,
       email,
-      password: hashedPassword,
+      password,
       fullName,
       phone,
       isActive: true,
@@ -96,7 +94,15 @@ export const sellerRegister = async (req, res) => {
 export const sellerListing = async (req, res) => {
   try {
     const sellerList = await Seller.find({isDeleted: false});
-    res.json({ success: true, message: "Seller get successfully", sellerList });
+    res.json({ success: true, message: "Seller fetch successfully", sellerList });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+export const customerListing = async (req, res) => {
+  try {
+    const sellerList = await Customer.find().select("-password -__v");
+    res.json({ success: true, message: "Customer fetch successfully", sellerList });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -126,13 +132,11 @@ export const userRegister = async (req, res) => {
       return res.status(400).json({ success: false, error: "Role not found" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     const user = new User({
       username,
       email,
       phone,
-      password: hashedPassword,
+      password,
       role_id: role._id,
       parent_type: activeUser.userType,
       parent_id: activeUser._id,
@@ -171,6 +175,30 @@ export const userGet = async (req,res) => {
     const user = await User.findById(id);
 
     res.json({ success: true, message: 'user fetch successfully', user });
+  } catch (err) {
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      return res.status(400).json({ message: `${field} already exists` });
+   }
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+export const customerGet = async (req,res) => {
+   try {
+     const activeUser = req.user;
+     const {id} = req.params;
+
+    if (activeUser.userType !== "Admin") {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          error: "Only admin can get customers",
+        });
+    }
+    const customer = await Customer.findById(id).select("-__v -password");
+
+    res.json({ success: true, message: 'customer fetch successfully', customer });
   } catch (err) {
     if (err.code === 11000) {
       const field = Object.keys(err.keyPattern)[0];
