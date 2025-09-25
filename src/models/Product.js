@@ -65,6 +65,8 @@ const ProductSchema = new mongoose.Schema(
     isDeleted: { type: Boolean, default: false },
     usertype: { type: String },
     slug: { type: String, trim: true, index: true, unique: true },
+    parent_id: { type: mongoose.Schema.Types.ObjectId },
+    parent_type: { type: String, required: true },
   },
   { timestamps: true }
 );
