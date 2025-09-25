@@ -6,11 +6,13 @@ const cartItemSchema = new mongoose.Schema({
     ref: "Product",
     required: true,
   },
+  variant: { type: Object},
+  description: { type: String },
   name: { type: String, required: true },
   price: { type: Number, required: true, min: 0 },
   quantity: { type: Number, required: true, min: 1, default: 1 },
   total: { type: Number, required: true, min: 0 },
-}, { timestamps: true });
+}, { _id:false });
 
 cartItemSchema.pre("validate", function (next) {
   this.total = this.price * this.quantity;
@@ -33,8 +35,7 @@ const cartSchema = new mongoose.Schema({
     type: String,
     enum: ["active", "ordered", "abandoned"],
     default: "active",
-  },
-  variant: Object
+  }
 }, { timestamps: true });
 
 cartSchema.pre("save", function (next) {

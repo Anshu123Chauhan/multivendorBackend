@@ -11,7 +11,7 @@ const getCartByOwner = async (req) => {
 
 export const addToCart = async (req, res) => {
   try {
-    const { productId, name, price, quantity, variant } = req.body;
+    const { productId, name, price, quantity, variant, description } = req.body;
     let cart = await getCartByOwner(req);
 
     if (!cart) {
@@ -30,7 +30,7 @@ export const addToCart = async (req, res) => {
       existingItem.quantity += quantity;
       existingItem.total = existingItem.price * existingItem.quantity;
     } else {
-      cart.items.push({ productId, name, price, quantity, variant });
+      cart.items.push({ productId, name, price, quantity, variant, description });
     }
 
     await cart.save();
@@ -69,6 +69,7 @@ export const updateCartItem = async (req, res) => {
       );
     } else {
       item.quantity = quantity;
+      item.variant = variant;
       item.total = item.price * quantity;
     }
 
