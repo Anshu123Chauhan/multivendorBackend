@@ -151,12 +151,15 @@ export const customerPasswordUpdate = async (req, res) => {
       return res.status(404).json({ success: false, message: "Customer not found" });
     }
 
-    const { password } = req.body;
-    if (!password) {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) {
       return res.status(400).json({ success: false, message: "Password is required" });
     }
-
-    customer.password = password; 
+    const ok = await customer.comparePassword(oldPassword);
+    if (!ok) {
+      return res.status(400).json({ error: 'Invalid old password' });
+    }
+    customer.password = newPassword; 
     await customer.save();
 
     res.status(200).json({
