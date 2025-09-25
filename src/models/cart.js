@@ -34,6 +34,7 @@ const cartSchema = new mongoose.Schema({
     enum: ["active", "ordered", "abandoned"],
     default: "active",
   },
+  variant: Object
 }, { timestamps: true });
 
 cartSchema.pre("save", function (next) {
