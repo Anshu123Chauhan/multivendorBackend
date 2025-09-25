@@ -21,7 +21,7 @@ export const login = async (req, res) => {
       res.status(400).json({ success: false, error: "invalid loginType" });
     }
 
-    if (!user) return res.status(400).json({ error: 'Invalid credentials' });
+    if (!user) return res.status(400).json({ error: 'Your account status is either pending or deleted. Please contact the administrator' });
     const ok = await user.comparePassword(password);
     if (!ok) return res.status(400).json({ error: 'Invalid credentials' });
     user = user.toObject();
