@@ -1,23 +1,38 @@
-import {Product} from "../../../models/Product.js";
-import jwt from 'jsonwebtoken'
-import mongoose from 'mongoose'
-import {generateSlug} from '../../../utils/slugify.js'
-import dotenv from 'dotenv'
+import { Product } from "../../../models/Product.js";
+import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
+import { generateSlug } from "../../../utils/slugify.js";
+import dotenv from "dotenv";
 dotenv.config();
 
 export const createProduct = async (req, res) => {
   try {
     const authHeader = req.headers["authorization"];
     const token = authHeader && authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    if(!token) return res.status(401).json({sucess:false, meaasge:"You Are Unauthorized to Access this module"}) 
-    const vendor = decoded._id
-    const usertype = decoded.userType
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!token)
+      return res
+        .status(401)
+        .json({
+          sucess: false,
+          meaasge: "You Are Unauthorized to Access this module",
+        });
+    const usertype = decoded.userType;
+    let parent_type = usertype
+    //==============
+    let parentId = decoded.parent_id || decoded._id;
+    if (usertype === "User") {
+      parentId = decoded.parent_id; 
+      parent_type = decoded.parent_type
+    }
+   const vendorid =  usertype === "User"?decoded._id:decoded._id
+    //===============
+// console.log(`vendorID==>${vendorid},usertype==>${usertype},parent_type==>${parent_type}, parent_Id==>${parentId}`)
     const {
       name,
       description,
-      images = [], 
-      status, 
+      images = [],
+      status,
       category,
       subCategory,
       brand,
@@ -26,13 +41,17 @@ export const createProduct = async (req, res) => {
       sku,
       inventory,
       tags = [],
-      variants = [],    
+      variants = [],
     } = req.body;
 
-     if (!mongoose.Types.ObjectId.isValid(category) || !mongoose.Types.ObjectId.isValid(subCategory)|| !mongoose.Types.ObjectId.isValid(brand)) {
-          return res.status(400).json({ success: false, message: "Invalid ID" });
-        }
-    const slug = generateSlug(name);    
+    if (
+      !mongoose.Types.ObjectId.isValid(category) ||
+      !mongoose.Types.ObjectId.isValid(subCategory) ||
+      !mongoose.Types.ObjectId.isValid(brand)
+    ) {
+      return res.status(400).json({ success: false, message: "Invalid ID" });
+    }
+    const slug = generateSlug(name);
     const product = await Product.create({
       name,
       description,
@@ -46,14 +65,16 @@ export const createProduct = async (req, res) => {
       sku,
       inventory,
       tags,
-      vendor,
+      vendor:vendorid,
       variants,
       usertype,
-      slug
+      slug,
+      parent_id:parentId,
+      parent_type
+
     });
 
-    res.status(201).json({sucess:true,product});
-
+    res.status(201).json({ sucess: true, product });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -61,18 +82,30 @@ export const createProduct = async (req, res) => {
 
 export const getProducts = async (req, res) => {
   try {
-    let { page = 1, limit = 10, search = "", sortBy = "createdAt", order = "desc" } = req.query;
+    let {
+      page = 1,
+      limit = 10,
+      search = "",
+      sortBy = "createdAt",
+      order = "desc",
+    } = req.query;
     page = parseInt(page);
     limit = parseInt(limit);
     const authHeader = req.headers["authorization"];
     const token = authHeader && authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    if(!token) return res.status(401).json({sucess:false, meaasge:"You Are Unauthorized to Access this module"}) 
-    const vendor = decoded._id
-    const usertype = decoded.userType
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!token)
+      return res
+        .status(401)
+        .json({
+          sucess: false,
+          meaasge: "You Are Unauthorized to Access this module",
+        });
+    const vendor = decoded._id;
+    const usertype = decoded.userType;
 
     const baseQuery = { isDeleted: false };
-        // If seller → restrict by vendor
+    // If seller → restrict by vendor
     if (usertype === "Seller") {
       baseQuery.vendor = vendor;
     }
@@ -83,18 +116,17 @@ export const getProducts = async (req, res) => {
         { sku: { $regex: search, $options: "i" } },
       ];
     }
- 
-      const total = await Product.countDocuments(baseQuery);
+
+    const total = await Product.countDocuments(baseQuery);
     const data = await Product.find(baseQuery)
-      .populate("category", "name")  
-      .populate("subCategory", "name") 
+      .populate("category", "name")
+      .populate("subCategory", "name")
       .populate("brand", "name")
       .sort({ [sortBy]: order === "desc" ? -1 : 1 })
       .skip((page - 1) * limit)
       .limit(limit);
 
     res.json({ total, page, limit, data });
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -102,9 +134,12 @@ export const getProducts = async (req, res) => {
 
 export const getProduct = async (req, res) => {
   try {
-    const product = await Product.findOne({ _id: req.params.id, isDeleted: false })
-      .populate("category", "name")  
-      .populate("subCategory", "name") 
+    const product = await Product.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    })
+      .populate("category", "name")
+      .populate("subCategory", "name")
       .populate("brand", "name");
     if (!product) return res.status(404).json({ message: "Product not found" });
     res.json(product);
@@ -113,13 +148,12 @@ export const getProduct = async (req, res) => {
   }
 };
 
-
 export const updateProduct = async (req, res) => {
   try {
     const {
       name,
       description,
-      images,        // optional: new array replaces existing product.images
+      images, // optional: new array replaces existing product.images
       status,
       category,
       subCategory,
@@ -131,27 +165,35 @@ export const updateProduct = async (req, res) => {
       tags,
       vendor,
       variants,
-      usertype      // optional: array to replace variants
+      usertype, // optional: array to replace variants
     } = req.body;
 
-    const product = await Product.findOne({ _id: req.params.id, isDeleted: false });
-    const slug = generateSlug(name); 
+    const product = await Product.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
+    const slug = generateSlug(name);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    if (name !== undefined){ product.name = name; product.slug = slug; }
+    if (name !== undefined) {
+      product.name = name;
+      product.slug = slug;
+    }
     if (description !== undefined) product.description = description;
-    if (images !== undefined) product.images = Array.isArray(images) ? images : product.images;
+    if (images !== undefined)
+      product.images = Array.isArray(images) ? images : product.images;
     if (status !== undefined) product.status = status;
     if (category !== undefined) product.category = category;
     if (subCategory !== undefined) product.subCategory = subCategory;
-    if (brand !== undefined) product.brand = brand; 
+    if (brand !== undefined) product.brand = brand;
     if (sellingPrice !== undefined) product.sellingPrice = sellingPrice;
     if (mrp !== undefined) product.mrp = mrp;
     if (sku !== undefined) product.sku = sku;
     if (inventory !== undefined) product.inventory = inventory;
-    if (tags !== undefined) product.tags = Array.isArray(tags) ? tags : product.tags;
+    if (tags !== undefined)
+      product.tags = Array.isArray(tags) ? tags : product.tags;
     if (vendor !== undefined) product.vendor = vendor;
-    if (usertype !==undefined) product.usertype = usertype
+    if (usertype !== undefined) product.usertype = usertype;
 
     if (variants !== undefined) {
       product.variants = Array.isArray(variants) ? variants : product.variants;
@@ -181,7 +223,10 @@ export const restoreProduct = async (req, res) => {
   try {
     const { id } = req.params;
     const product = await Product.findOne({ _id: id, isDeleted: true });
-    if (!product) return res.status(404).json({ message: "Product not found or not deleted" });
+    if (!product)
+      return res
+        .status(404)
+        .json({ message: "Product not found or not deleted" });
 
     product.isDeleted = false;
     await product.save();
@@ -275,7 +320,9 @@ export const restoreVariant = async (req, res) => {
 
     const variant = product.variants.id(variantId);
     if (!variant || variant.isDeleted === false)
-      return res.status(404).json({ message: "Variant not found or not deleted" });
+      return res
+        .status(404)
+        .json({ message: "Variant not found or not deleted" });
 
     variant.isDeleted = false;
     await product.save();
