@@ -1,5 +1,6 @@
 import { signToken } from '../../../middleware/auth.js';
 import { sendMail } from '../../../middleware/sendMail.js';
+import Cart from '../../../models/cart.js';
 import Customer from '../../../models/customer.js';
 import CustomerOtp from '../../../models/customerOtp.js';
 import mongoose from 'mongoose';
@@ -18,6 +19,37 @@ export const login = async (req, res) => {
     delete customerData.password;
     delete customerData.__v;
     const token = signToken(customerData);
+    const sessionId = req.headers["x-session-id"];
+    if (sessionId) {
+      const guestCart = await Cart.findOne({ sessionId, status: "active" });
+      if (guestCart) {
+        let customerCart = await Cart.findOne({
+          customerId: customer._id,
+          status: "active",
+        });
+
+        if (!customerCart) {
+          guestCart.customerId = customer._id;
+          guestCart.sessionId = undefined;
+          await guestCart.save();
+        } else {
+          guestCart.items.forEach((gItem) => {
+            const existing = customerCart.items.find(
+              (cItem) => cItem.productId.toString() === gItem.productId.toString()
+            );
+            if (existing) {
+              existing.quantity += gItem.quantity;
+              existing.total = existing.price * existing.quantity;
+            } else {
+              customerCart.items.push(gItem);
+            }
+          });
+
+          await customerCart.save();
+          await guestCart.deleteOne();
+        }
+      }
+    }
     res.json({ success: true, token, message: "Login successfully" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
