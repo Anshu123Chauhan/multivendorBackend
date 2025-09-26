@@ -7,7 +7,7 @@ export const createPaymentSetting = async(req, res)=>{
             res.status(201).json({ success: true, data: paymentgateway })
         
     } catch (error) {
-         res.status(400).json({ success: false, error: err.message });
+         res.status(400).json({ success: false, error: error.message });
     }
 }
 export const getPaymentSettings = async (req, res) => {
