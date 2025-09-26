@@ -101,7 +101,7 @@ export const getProducts = async (req, res) => {
 
     const baseQuery = { isDeleted: false };
     // If seller → restrict by vendor
-   if (usertype === "Seller") {
+    if (usertype === "Seller") {
       baseQuery.vendor = vendor;
     }
     if (usertype === "User") {
