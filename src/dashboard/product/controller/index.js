@@ -11,23 +11,21 @@ export const createProduct = async (req, res) => {
     const token = authHeader && authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (!token)
-      return res
-        .status(401)
-        .json({
-          sucess: false,
-          meaasge: "You Are Unauthorized to Access this module",
-        });
+      return res.status(401).json({
+        sucess: false,
+        meaasge: "You Are Unauthorized to Access this module",
+      });
     const usertype = decoded.userType;
-    let parent_type = usertype
+    let parent_type = usertype;
     //==============
     let parentId = decoded.parent_id || decoded._id;
     if (usertype === "User") {
-      parentId = decoded.parent_id; 
-      parent_type = decoded.parent_type
+      parentId = decoded.parent_id;
+      parent_type = decoded.parent_type;
     }
-   const vendorid =  usertype === "User"?decoded._id:decoded._id
+    const vendorid = usertype === "User" ? decoded._id : decoded._id;
     //===============
-// console.log(`vendorID==>${vendorid},usertype==>${usertype},parent_type==>${parent_type}, parent_Id==>${parentId}`)
+    // console.log(`vendorID==>${vendorid},usertype==>${usertype},parent_type==>${parent_type}, parent_Id==>${parentId}`)
     const {
       name,
       description,
@@ -65,13 +63,12 @@ export const createProduct = async (req, res) => {
       sku,
       inventory,
       tags,
-      vendor:vendorid,
+      vendor: vendorid,
       variants,
       usertype,
       slug,
-      parent_id:parentId,
-      parent_type
-
+      parent_id: parentId,
+      parent_type,
     });
 
     res.status(201).json({ sucess: true, product });
@@ -95,20 +92,26 @@ export const getProducts = async (req, res) => {
     const token = authHeader && authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (!token)
-      return res
-        .status(401)
-        .json({
-          sucess: false,
-          meaasge: "You Are Unauthorized to Access this module",
-        });
+      return res.status(401).json({
+        sucess: false,
+        meaasge: "You Are Unauthorized to Access this module",
+      });
     const vendor = decoded._id;
     const usertype = decoded.userType;
 
     const baseQuery = { isDeleted: false };
     // If seller → restrict by vendor
-    if (usertype === "Seller") {
+   if (usertype === "Seller") {
       baseQuery.vendor = vendor;
     }
+    if (usertype === "User") {
+      // staff should see their seller's products
+      baseQuery.vendor = decoded.parent_id;
+      // baseQuery.vendor = decoded._id; // staff belongs to seller
+    }
+    // else{
+    //   baseQuery.vendor =  decoded.parent_id;
+    // }
     if (search) {
       baseQuery.$or = [
         { name: { $regex: search, $options: "i" } },
