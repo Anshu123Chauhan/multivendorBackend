@@ -464,3 +464,42 @@ export const deleteRoleAndPermission = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+
+
+
+export const updatePassword = async (req, res) => {
+  try {
+    const activeUser = req.user; 
+    const {password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ success: false, message: "new password are required" });
+    }
+
+
+    let Model;
+    if (activeUser.userType === "Admin") {
+      Model = Admin;
+    } else if (activeUser.userType === "Seller") {
+      Model = Seller;
+    } else if (activeUser.userType === "User") {
+      Model = User;
+    } else {
+      return res.status(400).json({ success: false, message: "Invalid user type" });
+    }
+
+    const user = await Model.findById(activeUser._id).select("+password");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+
+
+    user.password = password;
+    await user.save();
+
+    return res.json({ success: true, message: "Password updated successfully" });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
