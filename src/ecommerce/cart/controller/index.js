@@ -1,4 +1,4 @@
-import Cart from "../../../models/cart.js";
+import {Cart} from "../../../models/cart.js";
 
 const getCartByOwner = async (req) => {
   if (req.user) {

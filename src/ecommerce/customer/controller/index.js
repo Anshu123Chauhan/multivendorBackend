@@ -1,6 +1,6 @@
 import { signToken } from '../../../middleware/auth.js';
 import { sendMail } from '../../../middleware/sendMail.js';
-import Cart from '../../../models/cart.js';
+import { Cart } from '../../../models/cart.js';
 import Customer from '../../../models/customer.js';
 import CustomerOtp from '../../../models/customerOtp.js';
 import mongoose from 'mongoose';
