@@ -11,7 +11,7 @@ const getCartByOwner = async (req) => {
 
 export const addToCart = async (req, res) => {
   try {
-    const { productId, name, price, quantity, variant, description,image } = req.body;
+    const { productId, variantId, name, price, quantity, variant, description,image } = req.body;
     let cart = await getCartByOwner(req);
 
     if (!cart) {
@@ -22,9 +22,13 @@ export const addToCart = async (req, res) => {
       });
     }
 
-    const existingItem = cart.items.find(
-      (item) => item.productId.toString() === productId
-    );
+    const existingItem = cart.items.find(item => {
+      if (variant) {
+        return item.productId.toString() === productId && item.variant === variant;
+      } else {
+        return item.productId.toString() === productId && !item.variant;
+      }
+    });
 
     if (existingItem) {
       existingItem.quantity += quantity;
@@ -62,19 +66,26 @@ export const updateCartItem = async (req, res) => {
 
     if (!cart) return res.status(404).json({ error: "Cart not found" });
 
-    const item = cart.items.find(
-      (i) => i.productId.toString() === productId
-    );
+    const item = cart.items.find((i) => {
+      if (variant) {
+        return i.productId.toString() === productId && i.variant === variant;
+      } else {
+        return i.productId.toString() === productId && !i.variant;
+      }
+    });
 
     if (!item) return res.status(404).json({ error: "Item not found in cart" });
 
     if (quantity <= 0) {
-      cart.items = cart.items.filter(
-        (i) => i.productId.toString() !== productId
-      );
+      cart.items = cart.items.filter((i) => {
+        if (variant) {
+          return !(i.productId.toString() === productId && i.variant === variant);
+        } else {
+          return !(i.productId.toString() === productId && !i.variant);
+        }
+      });
     } else {
       item.quantity = quantity;
-      item.variant = variant;
       item.total = item.price * quantity;
     }
 

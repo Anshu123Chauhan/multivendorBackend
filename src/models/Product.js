@@ -40,7 +40,7 @@ const VariantSchema = new mongoose.Schema(
       default: false,
     },
   },
-  {_id:false, timestamps: true }
+  { timestamps: true }
 );
 
 const ProductSchema = new mongoose.Schema(
