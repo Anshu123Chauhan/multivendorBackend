@@ -44,5 +44,29 @@ cartSchema.pre("save", function (next) {
   next();
 });
 
-const Cart = mongoose.model("Cart", cartSchema);
-export default Cart;
+const CheckoutSessionSchema = new mongoose.Schema({
+userId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
+cartItems: [cartItemSchema],
+subtotal: { type: Number, default: 0 },
+shippingMethod: { type: String, enum: ['standard','express','same_day'], default: 'standard' },
+shippingCost: { type: Number, default: 0 },
+shippingAddress:{
+    name: String,
+    phone: String,
+    street: String,
+    city: String,
+    state: String,
+    pincode: String
+  },
+paymentMethod: { type: String, enum: ['card','upi','wallet','netbanking','cod'], required: false },
+paymentStatus: { type: String, enum: ['pending','paid','failed','not_required'], default: 'pending' },
+paymentIntentId: { type: String },
+total: { type: Number, default: 0 },
+status: { type: String, enum: ['open','completed','cancelled'], default: 'open' },
+expiresAt: { type: Date }
+}, { timestamps: true });
+
+
+export const CheckoutSession = mongoose.model('CheckoutSession', CheckoutSessionSchema);
+
+export const Cart = mongoose.model("Cart", cartSchema);

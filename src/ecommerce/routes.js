@@ -4,6 +4,7 @@ import product from './product/routes.js'
 import cart from './cart/routes.js'
 import { guestSession } from "./auth/index.js";
 import Banner from '../models/Banner.js'
+import order from './order/routes.js'
 
 const router = express.Router();
 
@@ -19,5 +20,7 @@ router.get('/banners',async(req,res)=>{
   }
 
 })
+router.use("/order", order);
+
 
 export default router;
