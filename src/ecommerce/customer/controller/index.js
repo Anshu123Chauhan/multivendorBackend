@@ -375,13 +375,12 @@ export const updateForgetPassword = async (req, res) => {
 
 export const addAddress = async (req, res) => {
   try {
-    const { customerId } = req.params;
     const { street, city, state, postalCode, country, name, phone, address, landmark } = req.body;
 
-    const customer = await Customer.findById(customerId);
+    const customer = await Customer.findById(req.user._id);
     if (!customer) return res.status(404).json({ success: false, error: "Customer not found" });
 
-    customer.address.push({ street, city, state, postalCode, country, name, phone, address });
+    customer.addresses.push({ street, city, state, postalCode, country, name, phone, address, landmark });
     await customer.save();
 
     res.json({ success: true, message: "Address added successfully", addresses: customer.address });
@@ -393,9 +392,10 @@ export const addAddress = async (req, res) => {
 // Update Address
 export const updateAddress = async (req, res) => {
   try {
-    const { customerId, addressId } = req.params;
+    const { id } = req.params;
     const updates = req.body;
-
+    const customerId = new mongoose.Types.ObjectId(req.user._id);
+    const addressId = new mongoose.Types.ObjectId(id);
     const customer = await Customer.findOneAndUpdate(
       { _id: customerId, "addresses._id": addressId },
       { $set: { "addresses.$": { _id: new mongoose.Types.ObjectId(addressId), ...updates } } },
@@ -413,10 +413,10 @@ export const updateAddress = async (req, res) => {
 // Remove Address
 export const removeAddress = async (req, res) => {
   try {
-    const { customerId, addressId } = req.params;
-
+    const { id } = req.params;
+    const addressId = new mongoose.Types.ObjectId(id);
     const customer = await Customer.findByIdAndUpdate(
-      customerId,
+      req.user._id,
       { $pull: { addresses: { _id: addressId } } },
       { new: true }
     );
