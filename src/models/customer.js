@@ -59,7 +59,7 @@ const addressSchema = new mongoose.Schema({
     minlength: [2, "Country must be at least 2 characters long"],
     maxlength: [50, "Country cannot exceed 50 characters"],
   },
-}, {_id:false, timestamps: true });
+}, { timestamps: true });
 
 const customerSchema = new mongoose.Schema(
   {
@@ -101,7 +101,7 @@ const customerSchema = new mongoose.Schema(
           "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
       },
     },
-   address: [addressSchema],
+   addresses: [addressSchema],
   },
   { timestamps: true }
 );

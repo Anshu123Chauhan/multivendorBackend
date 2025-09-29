@@ -11,8 +11,9 @@ router.post('/detail/:id', authenticate, customerDetail);
 router.post('/update-password', authenticate, customerPasswordUpdate);
 router.post('/forget-password', updateForgetPassword);
 router.post('/send-otp', sentOtp);
+router.post('/verify-otp', verifyOtp);
 router.post('/address/add', authenticate, addAddress);
-router.put('/address/update', authenticate, updateAddress);
-router.delete('/address/remove', authenticate, removeAddress);
+router.put('/address/update/:id', authenticate, updateAddress);
+router.delete('/address/remove/:id', authenticate, removeAddress);
 
 export default router;
