@@ -376,15 +376,15 @@ export const updateForgetPassword = async (req, res) => {
 export const addAddress = async (req, res) => {
   try {
     const { customerId } = req.params;
-    const { street, city, state, postalCode, country } = req.body;
+    const { street, city, state, postalCode, country, name, phone, address, landmark } = req.body;
 
     const customer = await Customer.findById(customerId);
     if (!customer) return res.status(404).json({ success: false, error: "Customer not found" });
 
-    customer.addresses.push({ street, city, state, postalCode, country });
+    customer.address.push({ street, city, state, postalCode, country, name, phone, address });
     await customer.save();
 
-    res.json({ success: true, message: "Address added successfully", addresses: customer.addresses });
+    res.json({ success: true, message: "Address added successfully", addresses: customer.address });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

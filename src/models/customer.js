@@ -2,12 +2,36 @@ import mongoose from "mongoose";
 import bcrypt from 'bcrypt';
 
 const addressSchema = new mongoose.Schema({
-  street: {
+  name: {
+    type: String,
+    required: [true, "Name is required"],
+    trim: true,
+    minlength: [2, "Name must be at least 2 characters long"],
+    maxlength: [50, "Name cannot exceed 50 characters"],
+  },
+  phone: {
+    type: String,
+    required: [true, "Phone number is required"],
+    unique: true,
+    match: [
+      /^[6-9]{1}[0-9]{9}$/,
+      "Phone number must be a valid 10-digit number",
+    ],
+  },
+  address: {
     type: String,
     required: [true, "Street is required"],
     trim: true,
     minlength: [3, "Street must be at least 3 characters long"],
     maxlength: [100, "Street cannot exceed 100 characters"],
+  },
+  street: {
+    type: String,
+    trim: true
+  },
+  landmark: {
+    type: String,
+    trim: true
   },
   city: {
     type: String,
