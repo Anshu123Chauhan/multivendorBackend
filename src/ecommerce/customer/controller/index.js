@@ -389,16 +389,48 @@ export const addAddress = async (req, res) => {
   }
 };
 
-// Update Address
+export const getAddressList = async (req, res) => {
+  try {
+    const customer = await Customer.findById(req.user._id);
+
+    if (!customer) return res.status(404).json({ success: false, error: "Customer not found" });
+
+    res.json({ success: true, message: "Address fetch successfully", addresses: customer.addresses });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+export const getAddress = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const addressId = new mongoose.Types.ObjectId(id);
+    const customer = await Customer.findOne(
+      { _id: new mongoose.Types.ObjectId(req.user._id), "addresses._id": addressId }
+    );
+
+    if (!customer) return res.status(404).json({ success: false, error: "Customer or Address not found" });
+
+    res.json({ success: true, message: "Address updated successfully", addresses: customer.addresses });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
 export const updateAddress = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
     const customerId = new mongoose.Types.ObjectId(req.user._id);
     const addressId = new mongoose.Types.ObjectId(id);
+
+    const setObj = {};
+    for (const [key, value] of Object.entries(updates)) {
+      setObj[`addresses.$.${key}`] = value;
+    }
+    setObj["addresses.$.updatedAt"] = new Date();
+
     const customer = await Customer.findOneAndUpdate(
       { _id: customerId, "addresses._id": addressId },
-      { $set: { "addresses.$": { _id: new mongoose.Types.ObjectId(addressId), ...updates } } },
+      { $set: setObj },
       { new: true, runValidators: true }
     );
 
@@ -423,7 +455,7 @@ export const removeAddress = async (req, res) => {
 
     if (!customer) return res.status(404).json({ success: false, error: "Customer or Address not found" });
 
-    res.json({ success: true, message: "Address removed successfully", addresses: customer.addresses });
+    res.json({ success: true, message: "Address removed successfully" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
