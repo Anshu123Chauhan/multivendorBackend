@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken";
 export const placeOrder = async (req, res) => {
   try {
     const {
+      sellerId,
       orderNumber,
       items,
       shippingAddress,
@@ -15,6 +16,7 @@ export const placeOrder = async (req, res) => {
       shippingMethod,
       shippingCost,
       paymentStatus,
+      status,
       total,
     } = req.body;
     const authHeader = req.headers["authorization"];
@@ -30,6 +32,7 @@ export const placeOrder = async (req, res) => {
 
     // Create order
     const order = await Order.create({
+      sellerId,
       orderNumber,
       customerId,
       items,
@@ -40,7 +43,8 @@ export const placeOrder = async (req, res) => {
       shippingMethod,
       shippingCost,
       paymentStatus,
-      total
+      total,
+      status
     });
 
     // const transporter = nodemailer.createTransport({
