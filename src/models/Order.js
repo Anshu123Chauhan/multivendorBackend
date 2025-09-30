@@ -2,6 +2,7 @@ import mongoose from 'mongoose'
 
 const OrderItemSchema = new mongoose.Schema({
 productId: String,
+sellerId: { type: mongoose.Schema.Types.ObjectId, ref: "Seller", required: true },
 name: String,
 qty: Number,
 price: Number
@@ -22,7 +23,6 @@ pincode: String
 
 const OrderSchema = new mongoose.Schema({
 orderNumber: { type: String, required: true, unique: true },
-sellerId: { type: mongoose.Schema.Types.ObjectId, ref: "Seller", required: true },
 customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true }, 
 items: [OrderItemSchema],
 subtotal: { type: Number, default: 0 },
