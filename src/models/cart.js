@@ -13,6 +13,8 @@ const cartItemSchema = new mongoose.Schema({
   price: { type: Number, required: true, min: 0 },
   quantity: { type: Number, required: true, min: 1, default: 1 },
   total: { type: Number, required: true, min: 0 },
+  parent_type: { type: String, required: true},
+  parent_id: { type: mongoose.Schema.Types.ObjectId, required: true,},
 }, { _id:false });
 
 cartItemSchema.pre("validate", function (next) {
