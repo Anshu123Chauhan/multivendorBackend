@@ -22,15 +22,15 @@ pincode: String
 
 const OrderSchema = new mongoose.Schema({
 orderNumber: { type: String, required: true, unique: true },
-userId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
+customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
 items: [OrderItemSchema],
-subtotal: Number,
-shippingMethod: String,
+subtotal: { type: Number, default: 0 },
+shippingMethod: { type: String, enum: ['standard','express','same_day'], default: 'standard' },
 shippingCost: Number,
 shippingAddress: AddressEmbed,
-paymentMethod: String,
-paymentStatus: String,
-paymentTransactionId: String,
+paymentMethod: {type:String,enum: ['card','upi','wallet','netbanking','cod']},
+paymentStatus: {type:String,enum: ['pending','paid','failed','not_required'],default: 'pending'},
+ourPaymentTransactionId: String,
 total: Number,
 status: { type: String, enum: ['placed','paid','shipped','delivered','cancelled'], default: 'placed' }
 }, { timestamps: true });
