@@ -22,7 +22,8 @@ pincode: String
 
 const OrderSchema = new mongoose.Schema({
 orderNumber: { type: String, required: true, unique: true },
-customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
+sellerId: { type: mongoose.Schema.Types.ObjectId, ref: "Seller", required: true },
+customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true }, 
 items: [OrderItemSchema],
 subtotal: { type: Number, default: 0 },
 shippingMethod: { type: String, enum: ['standard','express','same_day'], default: 'standard' },
