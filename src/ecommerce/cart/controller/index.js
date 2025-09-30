@@ -11,7 +11,7 @@ const getCartByOwner = async (req) => {
 
 export const addToCart = async (req, res) => {
   try {
-    const { productId, name, price, quantity, variant, description,image } = req.body;
+    const { productId, name, price, quantity, variant, description, image } = req.body;
     let cart = await getCartByOwner(req);
 
     if (!cart) {
@@ -22,20 +22,39 @@ export const addToCart = async (req, res) => {
       });
     }
 
-    const existingItem = cart.items.find(
-      (item) => item.productId.toString() === productId
-    );
+    const isSameVariant = (v1, v2) => {
+      if (!v1 && !v2) return true;
+      if (!v1 || !v2) return false;
+      if (!Array.isArray(v1.attributes) || !Array.isArray(v2.attributes)) return false;
+
+      if (v1.attributes.length !== v2.attributes.length) return false;
+
+      return v1.attributes.every(attr1 =>
+        v2.attributes.some(attr2 => attr1.type === attr2.type && attr1.value === attr2.value)
+      );
+    };
+
+    const existingItem = cart.items.find(item => {
+      return (
+        item.productId.toString() === productId &&
+        isSameVariant(item.variant, variant)
+      );
+    });
 
     if (existingItem) {
       existingItem.quantity += quantity;
       existingItem.total = existingItem.price * existingItem.quantity;
     } else {
-      if(variant){
-        cart.items.push({ productId, name, price, quantity, variant, description });
-      }
-      else{
-        cart.items.push({ productId, name, price, quantity, image, description });
-      }
+      cart.items.push({
+        productId,
+        name,
+        price,
+        quantity,
+        variant: variant || null,
+        image: image || null,
+        description,
+        total: price * quantity,
+      });
     }
 
     await cart.save();
@@ -62,19 +81,26 @@ export const updateCartItem = async (req, res) => {
 
     if (!cart) return res.status(404).json({ error: "Cart not found" });
 
-    const item = cart.items.find(
-      (i) => i.productId.toString() === productId
-    );
+    const item = cart.items.find((i) => {
+      if (variant) {
+        return i.productId.toString() === productId && i.variant === variant;
+      } else {
+        return i.productId.toString() === productId && !i.variant;
+      }
+    });
 
     if (!item) return res.status(404).json({ error: "Item not found in cart" });
 
     if (quantity <= 0) {
-      cart.items = cart.items.filter(
-        (i) => i.productId.toString() !== productId
-      );
+      cart.items = cart.items.filter((i) => {
+        if (variant) {
+          return !(i.productId.toString() === productId && i.variant === variant);
+        } else {
+          return !(i.productId.toString() === productId && !i.variant);
+        }
+      });
     } else {
       item.quantity = quantity;
-      item.variant = variant;
       item.total = item.price * quantity;
     }
 
