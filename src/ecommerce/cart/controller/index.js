@@ -1,4 +1,5 @@
 import {Cart} from "../../../models/cart.js";
+import { Product } from "../../../models/Product.js";
 
 const getCartByOwner = async (req) => {
   if (req.user) {
@@ -13,7 +14,7 @@ export const addToCart = async (req, res) => {
   try {
     const { productId, name, price, quantity, variant, description, image } = req.body;
     let cart = await getCartByOwner(req);
-
+    const productDetail = await Product.findById(productId);
     if (!cart) {
       cart = new Cart({
         customerId: req.user ? req.user._id : undefined,
@@ -54,6 +55,8 @@ export const addToCart = async (req, res) => {
         image: image || null,
         description,
         total: price * quantity,
+        parent_type: productDetail.parent_type,
+        parent_id: productDetail.parent_id
       });
     }
 
@@ -81,23 +84,32 @@ export const updateCartItem = async (req, res) => {
 
     if (!cart) return res.status(404).json({ error: "Cart not found" });
 
-    const item = cart.items.find((i) => {
-      if (variant) {
-        return i.productId.toString() === productId && i.variant === variant;
-      } else {
-        return i.productId.toString() === productId && !i.variant;
-      }
+    const isSameVariant = (v1, v2) => {
+      if (!v1 && !v2) return true;
+      if (!v1 || !v2) return false;
+      if (!Array.isArray(v1.attributes) || !Array.isArray(v2.attributes)) return false;
+      if (v1.attributes.length !== v2.attributes.length) return false;
+
+      return v1.attributes.every(attr1 =>
+        v2.attributes.some(attr2 => attr1.type === attr2.type && attr1.value === attr2.value)
+      );
+    };
+
+    const item = cart.items.find(i => {
+      return (
+        i.productId.toString() === productId &&
+        isSameVariant(i.variant, variant)
+      );
     });
 
     if (!item) return res.status(404).json({ error: "Item not found in cart" });
 
     if (quantity <= 0) {
-      cart.items = cart.items.filter((i) => {
-        if (variant) {
-          return !(i.productId.toString() === productId && i.variant === variant);
-        } else {
-          return !(i.productId.toString() === productId && !i.variant);
-        }
+      cart.items = cart.items.filter(i => {
+        return !(
+          i.productId.toString() === productId &&
+          isSameVariant(i.variant, variant)
+        );
       });
     } else {
       item.quantity = quantity;
@@ -113,14 +125,28 @@ export const updateCartItem = async (req, res) => {
 
 export const removeCartItem = async (req, res) => {
   try {
-    const { productId } = req.body;
+    const { productId, variant } = req.body;
     let cart = await getCartByOwner(req);
 
     if (!cart) return res.status(404).json({ error: "Cart not found" });
 
-    cart.items = cart.items.filter(
-      (i) => i.productId.toString() !== productId
-    );
+    const isSameVariant = (v1, v2) => {
+      if (!v1 && !v2) return true;
+      if (!v1 || !v2) return false;
+      if (!Array.isArray(v1.attributes) || !Array.isArray(v2.attributes)) return false;
+      if (v1.attributes.length !== v2.attributes.length) return false;
+
+      return v1.attributes.every(attr1 =>
+        v2.attributes.some(attr2 => attr1.type === attr2.type && attr1.value === attr2.value)
+      );
+    };
+
+    cart.items = cart.items.filter(i => {
+      return !(
+        i.productId.toString() === productId &&
+        isSameVariant(i.variant, variant)
+      );
+    });
 
     await cart.save();
     res.json({ success: true, cart });
