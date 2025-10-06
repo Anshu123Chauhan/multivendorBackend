@@ -3,15 +3,6 @@ import jwt from "jsonwebtoken";
 
 export const getOrders = async (req, res) => {
   try {
-    let {
-      page = 1,
-      limit = 10,
-      search = "",
-      sortBy = "createdAt",
-      order = "desc",
-    } = req.query;
-    page = parseInt(page);
-    limit = parseInt(limit);
     const authHeader = req.headers["authorization"];
     const token = authHeader && authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -20,38 +11,66 @@ export const getOrders = async (req, res) => {
         sucess: false,
         meaasge: "You Are Unauthorized to Access this module",
       });
-    const vendor = decoded._id;
-    const usertype = decoded.userType;
 
-    const baseQuery = { isDeleted: false };
-    // If seller → restrict by vendor
+    const usertype = decoded.userType;
+    let query = {};
+
+    //Role-based filtering
     if (usertype === "Seller") {
-      baseQuery.vendor = vendor;
+      query.sellerId = decoded._id;
+    } else if (usertype === "Staff") {
+      query.sellerId = decoded._id; // staff belongs to seller
     }
-    if (usertype === "User") {
-      // staff should see their seller's products
-      baseQuery.vendor = decoded.parent_id;
-      // baseQuery.vendor = decoded._id; // staff belongs to seller
+    // Admin sees all orders
+
+    // Pagination, Sorting, Searching
+    let {
+      page = 1,
+      limit = 10,
+      search = "",
+      sortBy = "createdAt",
+      order = "desc",
+    } = req.query;
+
+    page = parseInt(page);
+    limit = parseInt(limit);
+    const sortOrder = order === "asc" ? 1 : -1;
+
+    //Search in product name, orderNumber, or user email
+    if (search) {
+      query.$or = [
+        { orderNumber: { $regex: search, $options: "i" } },
+        { "items.name": { $regex: search, $options: "i" } },
+        { "userId.name": { $regex: search, $options: "i" } },
+      ];
     }
-     if (search) {
-          baseQuery.$or = [
-            { name: { $regex: search, $options: "i" } },
-            { "variants.sku": { $regex: search, $options: "i" } },
-            { sku: { $regex: search, $options: "i" } },
-          ];
-        }
-    
-        const total = await Order.countDocuments(baseQuery);
-        const data = await Order.find(baseQuery)
-          .sort({ [sortBy]: order === "desc" ? -1 : 1 })
-          .skip((page - 1) * limit)
-          .limit(limit);
-    
-        res.json({ total, page, limit, data });
-  } catch (err) {
-    res.status(400).JSON({
-      message: "somthing went wrong to fetch order data",
-      error:err.message
+
+    // Count total
+    const total = await Order.countDocuments(query);
+
+    //Fetch paginated data
+    const orders = await Order.find(query)
+      .populate("userId", "name email")
+      .populate("customerId", "storeName email")
+      .populate("items.productId", "name image price")
+      .sort({ [sortBy]: sortOrder })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    //Pagination metadata
+    const totalPages = Math.ceil(total / limit);
+
+    res.status(200).json({
+      success: true,
+      total,
+      page,
+      totalPages,
+      limit,
+      count: orders.length,
+      orders,
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
   }
 };
