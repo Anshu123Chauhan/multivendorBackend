@@ -1,21 +1,20 @@
 // controllers/orderController.js
-import { Order } from "../../../models/Order.js";
+import { Order,OrderParent } from "../../../models/Order.js";
 import nodemailer from "nodemailer";
 import { v4 as uuidv4 } from "uuid";
 import jwt from "jsonwebtoken";
+import {sendMail} from '../../../middleware/sendMail.js'
+import { Cart } from "../../../models/cart.js";
 
 export const placeOrder = async (req, res) => {
   try {
     const {
-      sellerId,
       orderNumber,
       items,
       shippingAddress,
       paymentMethod,
-      subtotal,
       shippingMethod,
       shippingCost,
-      paymentStatus,
       status,
       total,
     } = req.body;
@@ -27,47 +26,70 @@ export const placeOrder = async (req, res) => {
         sucess: false,
         meaasge: "Token is Missing",
       });
-    const customerId = decoded._id; // assuming middleware adds user
+    const userId = decoded._id; // assuming middleware adds user
     const ourPaymentTransactionId = `${paymentMethod}-${uuidv4()}`;
 
-    // Create order
-    const order = await Order.create({
-      sellerId,
+     //Group items by sellerId
+    const itemsBySeller = {};
+    items.forEach(item => {
+      if (!itemsBySeller[item.sellerId]) {
+        itemsBySeller[item.sellerId] = [];
+      }
+      itemsBySeller[item.sellerId].push(item);
+    });
+
+    //Create parent order
+    const parentOrder = await OrderParent.create({
+      userId,
       orderNumber,
-      customerId,
-      items,
-      shippingAddress,
+      totalAmount: total,
       paymentMethod,
+      paymentStatus: paymentMethod === "cod" ? "not_required" : "pending",
       ourPaymentTransactionId,
-      subtotal,
+      shippingAddress,
       shippingMethod,
       shippingCost,
-      paymentStatus,
-      total,
       status
     });
 
-    // const transporter = nodemailer.createTransport({
-    //   service: "gmail",
-    //   auth: {
-    //     user: process.env.SMTP_USER,
-    //     pass: process.env.SMTP_PASS,
-    //   },
-    // });
+    const subOrderIds = [];
 
-    // await transporter.sendMail({
-    //   from: process.env.SMTP_USER,
-    //   to: req.user.email,
-    //   subject: "Order Confirmation",
-    //   text: `Your order #${order._id} has been placed successfully!`,
-    // });
+    //Create sub-orders per seller
+    for (const [sellerId, sellerItems] of Object.entries(itemsBySeller)) {
+      const subtotalSeller = sellerItems.reduce((sum, i) => sum + i.price * i.qty, 0);
 
-    // --- emit socket event ---
-    if (req.io) {
-      req.io.to(`user:${userId}`).emit("order:placed", order);
+      const subOrder = await Order.create({
+        parentOrderId: parentOrder._id,
+        customerId:sellerId,
+        userId,
+        orderNumber: `${uuidv4()}`, // unique per seller
+        items: sellerItems,
+        subtotal: subtotalSeller,
+        total: subtotalSeller,
+        paymentMethod,
+        paymentStatus: paymentMethod === "cod" ? "not_required" : "pending",
+        shippingAddress
+      });
+
+      subOrderIds.push(subOrder._id);
     }
 
-    res.status(201).json({ success: true, order });
+    // Update parent order with sub-orders
+    parentOrder.subOrders = subOrderIds;
+    await parentOrder.save();
+    await Cart.findByIdAndDelete(orderNumber);
+
+    // Send confirmation email
+    await sendMail(shippingAddress.email, "Order Confirmed", `Your order ${orderNumber} has been placed successfully.`);
+    
+
+    res.status(201).json({
+      success: true,
+      message: "Order placed successfully",
+      parentOrder,
+      subOrders: subOrderIds
+    });
+    
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
