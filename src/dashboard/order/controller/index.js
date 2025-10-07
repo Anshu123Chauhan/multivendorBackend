@@ -17,12 +17,12 @@ export const getOrders = async (req, res) => {
 
     //Role-based filtering
     if (usertype === "Seller") {
-      query.sellerId = decoded._id;
-    } else if (usertype === "Staff") {
-      query.sellerId = decoded._id; // staff belongs to seller
+      console.log(`checking id ==>  ${decoded._id}`);
+      query.customerId = decoded._id;
     }
-    // Admin sees all orders
 
+    // Admin sees all orders
+    console.log(`checking seller id ==>  ${query.customerId}`);
     // Pagination, Sorting, Searching
     let {
       page = 1,
@@ -44,18 +44,32 @@ export const getOrders = async (req, res) => {
         { "userId.name": { $regex: search, $options: "i" } },
       ];
     }
-
+    console.log(`checking Query ==>  ${JSON.stringify(query)}`);
     // Count total
     const total = await Order.countDocuments(query);
 
     //Fetch paginated data
     const orders = await Order.find(query)
-      .populate("userId", "name email")
-      .populate("customerId", "storeName email")
+      .populate("userId", "username phone")
+      .populate("customerId", "name email")
       .populate("items.productId", "name image price")
       .sort({ [sortBy]: sortOrder })
       .skip((page - 1) * limit)
       .limit(limit);
+
+    // console.log(`checking total item ==> ${orders.parentOrderId}`);
+
+    const formattedOrders = orders.map((order) => ({
+      orderId: order._id,
+      totalItems: order.items.length,
+      customerName: order.customerId?.name,
+      sellerName: order.sellerId?.name,
+      paymentStatus: order.paymentStatus,
+      orderStatus: order.orderStatus,
+      total: order.total,
+      date: order.createdAt,
+      action: order._id, // frontend can use this for “View” or “Edit”
+    }));
 
     //Pagination metadata
     const totalPages = Math.ceil(total / limit);
@@ -67,10 +81,59 @@ export const getOrders = async (req, res) => {
       totalPages,
       limit,
       count: orders.length,
-      orders,
+      orders: formattedOrders,
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, error: err.message });
+  }
+};
+export const getOrderById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!token)
+      return res.status(401).json({
+        sucess: false,
+        meaasge: "You Are Unauthorized to Access this module",
+      });
+    const authId = decoded._id;
+    const authidType = decoded.userType;
+    let QueryData;
+    // console.log(`authId==> ${authId}, authidType==> ${authidType}`);
+    if (authidType === "Seller") {
+      QueryData = { _id: id, customerId: authId };
+    }
+    if (authidType === "Admin") {
+      QueryData = { _id: id };
+    }
+
+    //Find the order by ID and populate related fields
+    const order = await Order.find(QueryData)
+      .populate("userId", "username phone email")
+      .populate("customerId", "email")
+      .populate("items.productId", "name image price description")
+      .lean(); // Convert Mongoose doc to plain JS object
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      order,
+    });
+  } catch (error) {
+    console.error("Error fetching order details:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
