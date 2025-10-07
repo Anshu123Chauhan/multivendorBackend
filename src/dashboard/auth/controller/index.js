@@ -184,7 +184,7 @@ export const verifyOtp = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "OTP verified successfully",
-      data: { otpId: verifyOtp._id },
+      data: { otpId: otpRecord._id },
     });
   } catch (error) {
     console.error("Error in verifyOtp API:", error);
