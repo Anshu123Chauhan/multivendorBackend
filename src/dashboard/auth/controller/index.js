@@ -65,6 +65,7 @@ export const sentOtp = async (req, res) => {
       { otp, expiresAt, verified: false, userType },
       { upsert: true, new: true }
     );
+    user.name = user.fullName || user.username;
     const subject = "Your One-Time Password (OTP) for Verification"
     const html = `
       <!DOCTYPE html>
