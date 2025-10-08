@@ -137,14 +137,9 @@ export const getCustomerOrders = async (req, res) => {
     const total = await OrderParent.countDocuments(query);
 
     //Fetch data
-    const orders = await OrderParent.find(query)
-      .populate({
-        path: "Order",
-        populate: [
-          // { path: "customerId", select: "storeName email" },
-          { path: "items.productId", select: "name image price" }
-        ]
-      })
+   const orders = await Order.find(query)
+      .populate("parentOrderId", "")
+      .populate("items.productId", "name image price")
       .sort({ [sortBy]: sortOrder })
       .skip((page - 1) * limit)
       .limit(limit)
