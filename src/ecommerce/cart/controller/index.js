@@ -162,7 +162,7 @@ export const wishlistToCart = async (req, res) => {
     );
 
     if (existingItem) {
-      return res.status(400).json({ error: "Item already in cart" });
+      return res.status(200).json({ error: "Item already in cart" });
     }
 
     const wishlistItem = wishlist.items[itemIndex];
