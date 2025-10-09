@@ -80,7 +80,12 @@ export const placeOrder = async (req, res) => {
     await Cart.findByIdAndDelete(orderNumber);
 
     // Send confirmation email
-    await sendMail(shippingAddress.email, "Order Confirmed", `Your order ${orderNumber} has been placed successfully.`);
+   await sendMail(
+  `Your order ${orderNumber} has been placed successfully.`,
+  "Order Confirmed",
+  shippingAddress.email
+);
+
     
 
     res.status(201).json({
