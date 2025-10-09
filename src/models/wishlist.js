@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const VariantSchema = new mongoose.Schema({
+  sku: { type: String },
   attributes: [
     {
       type: { type: String, required: true },  

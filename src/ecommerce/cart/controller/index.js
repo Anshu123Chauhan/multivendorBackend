@@ -1,5 +1,7 @@
 import {Cart} from "../../../models/cart.js";
 import { Product } from "../../../models/Product.js";
+import { isSameVariant } from "../../../utils/variantHelper.js";
+import Wishlist from "../../../models/wishlist.js";
 
 const getCartByOwner = async (req) => {
   if (req.user) {
@@ -22,18 +24,6 @@ export const addToCart = async (req, res) => {
         items: [],
       });
     }
-
-    const isSameVariant = (v1, v2) => {
-      if (!v1 && !v2) return true;
-      if (!v1 || !v2) return false;
-      if (!Array.isArray(v1.attributes) || !Array.isArray(v2.attributes)) return false;
-
-      if (v1.attributes.length !== v2.attributes.length) return false;
-
-      return v1.attributes.every(attr1 =>
-        v2.attributes.some(attr2 => attr1.type === attr2.type && attr1.value === attr2.value)
-      );
-    };
 
     const existingItem = cart.items.find(item => {
       return (
@@ -84,17 +74,6 @@ export const updateCartItem = async (req, res) => {
 
     if (!cart) return res.status(404).json({ error: "Cart not found" });
 
-    const isSameVariant = (v1, v2) => {
-      if (!v1 && !v2) return true;
-      if (!v1 || !v2) return false;
-      if (!Array.isArray(v1.attributes) || !Array.isArray(v2.attributes)) return false;
-      if (v1.attributes.length !== v2.attributes.length) return false;
-
-      return v1.attributes.every(attr1 =>
-        v2.attributes.some(attr2 => attr1.type === attr2.type && attr1.value === attr2.value)
-      );
-    };
-
     const item = cart.items.find(i => {
       return (
         i.productId.toString() === productId &&
@@ -128,18 +107,7 @@ export const removeCartItem = async (req, res) => {
     const { productId, variant } = req.body;
     let cart = await getCartByOwner(req);
 
-    if (!cart) return res.status(404).json({ error: "Cart not found" });
-
-    const isSameVariant = (v1, v2) => {
-      if (!v1 && !v2) return true;
-      if (!v1 || !v2) return false;
-      if (!Array.isArray(v1.attributes) || !Array.isArray(v2.attributes)) return false;
-      if (v1.attributes.length !== v2.attributes.length) return false;
-
-      return v1.attributes.every(attr1 =>
-        v2.attributes.some(attr2 => attr1.type === attr2.type && attr1.value === attr2.value)
-      );
-    };
+    if (!cart) return res.status(404).json({ error: "Cart not found" });    
 
     cart.items = cart.items.filter(i => {
       return !(
@@ -164,6 +132,55 @@ export const clearCart = async (req, res) => {
     cart.items = [];
     await cart.save();
     res.json({ success: true, cart });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const wishlistToCart = async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: "Login required" });
+
+    const { productId, variant } = req.body;
+
+    const wishlist = await Wishlist.findOne({ customerId: req.user._id });
+    if (!wishlist) return res.status(404).json({ error: "Wishlist not found" });
+
+    const itemIndex = wishlist.items.findIndex(
+      (i) => i.productId.toString() === productId && isSameVariant(i.variant, variant)
+    );
+    if (itemIndex === -1)
+      return res.status(404).json({ error: "Item not found in wishlist" });
+
+    let cart = await Cart.findOne({ customerId: req.user._id, status: "active" });
+    if (!cart) {
+      cart = new Cart({ customerId: req.user._id, items: [], status: "active" });
+    }
+
+    const existingItem = cart.items.find(
+      (i) => i.productId.toString() === productId && isSameVariant(i.variant, variant)
+    );
+
+    if (existingItem) {
+      return res.status(400).json({ error: "Item already in cart" });
+    }
+
+    const wishlistItem = wishlist.items[itemIndex];
+    cart.items.push({
+      productId: wishlistItem.productId,
+      name: wishlistItem.name,
+      price: wishlistItem.price,
+      image: wishlistItem.image || null,
+      description: wishlistItem.description || null,
+      variant: wishlistItem.variant || null,
+      quantity: 1,
+    });
+
+    wishlist.items.splice(itemIndex, 1);
+
+    await Promise.all([cart.save(), wishlist.save()]);
+
+    res.json({ success: true, cart, wishlist });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
