@@ -107,7 +107,7 @@ export const cartToWishlist = async (req, res) => {
       (i) => i.productId.toString() === productId && isSameVariant(i.variant, variant)
     );
     if (alreadyInWishlist) {
-      return res.status(400).json({ error: "Item already in wishlist" });
+      return res.status(200).json({ error: "Item already in wishlist" });
     }
 
     const cartItem = cart.items[itemIndex];
