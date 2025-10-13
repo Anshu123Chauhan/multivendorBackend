@@ -144,6 +144,60 @@ export const customerDetail =  async (req, res) => {
   }
 };
 
+export const customerProfileUpdate = async (req, res) => {
+  try {
+    const customer = await Customer.findById(req.user._id);
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    const { name, phone, gender } = req.body;
+
+    if (name && name.trim() !== "") customer.name = name.trim();
+    if (phone && phone.trim() !== "") customer.phone = phone.trim();
+    if (gender && gender.trim() !== "") customer.gender = gender.trim();
+
+    await customer.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: {
+        name: customer.name,
+        phone: customer.phone,
+        gender: customer.gender,
+      },
+    });
+  } catch (error) {
+    console.error("Error in profile update API:", error);
+
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: messages,
+      });
+    }
+
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({
+        success: false,
+        message: `${field} already exists`,
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
 export const customerPasswordUpdate = async (req, res) => {
   try {
     const customer = await Customer.findById(req.user._id);
@@ -179,6 +233,7 @@ export const customerPasswordUpdate = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 export const sentOtp = async (req, res) => {
   try {
     const { email } = req.body;
@@ -275,6 +330,7 @@ export const sentOtp = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 export const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;

@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticate } from '../auth/index.js';
-import { customerRegister, customerDetail, login, sentOtp, updateForgetPassword, customerPasswordUpdate, verifyOtp,
+import { customerRegister, customerDetail, customerProfileUpdate, login, sentOtp, updateForgetPassword, customerPasswordUpdate, verifyOtp,
     addAddress, getAddress, getAddressList, updateAddress, removeAddress } from './controller/index.js';
 
 const router = express.Router();
@@ -8,6 +8,7 @@ const router = express.Router();
 router.post('/auth/login', login);
 router.post('/register', customerRegister);
 router.get('/detail/:id', authenticate, customerDetail);
+router.put('/update', authenticate, customerProfileUpdate);
 router.post('/update-password', authenticate, customerPasswordUpdate);
 router.post('/forget-password', updateForgetPassword);
 router.post('/send-otp', sentOtp);
