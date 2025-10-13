@@ -50,7 +50,8 @@ export const placeOrder = async (req, res) => {
       shippingAddress,
       shippingMethod,
       shippingCost,
-      status
+      status,
+      [`orderTracking.${status}`]: new Date()
     });
 
     const subOrderIds = [];
@@ -69,7 +70,8 @@ export const placeOrder = async (req, res) => {
         total: subtotalSeller,
         paymentMethod,
         paymentStatus: paymentMethod === "cod" ? "not_required" : "pending",
-        shippingAddress
+        shippingAddress,
+      [`orderTracking.${status}`]: new Date()
       });
 
       subOrderIds.push(subOrder._id);
