@@ -60,6 +60,12 @@ paymentMethod: {type:String,enum: ['card','upi','wallet','netbanking','cod']},
 paymentStatus: {type:String,enum: ['pending','paid','failed','not_required'],default: 'pending'},
 ourPaymentTransactionId: String,
 total: Number,
+orderTracking: {
+  placed: Date,
+  shipped: Date,
+  delivered: Date,
+  cancelled: Date,
+},
 status: { type: String, enum: ['placed','paid','shipped','delivered','cancelled'], default: 'placed' }
 }, { timestamps: true });
 
