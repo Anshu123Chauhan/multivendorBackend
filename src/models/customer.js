@@ -12,7 +12,6 @@ const addressSchema = new mongoose.Schema({
   phone: {
     type: String,
     required: [true, "Phone number is required"],
-    unique: true,
     match: [
       /^[6-9]{1}[0-9]{9}$/,
       "Phone number must be a valid 10-digit number",
@@ -24,11 +23,6 @@ const addressSchema = new mongoose.Schema({
     trim: true,
     minlength: [3, "Street must be at least 3 characters long"],
     maxlength: [100, "Street cannot exceed 100 characters"],
-  },
-  gender: {
-    type: String,
-    trim: true,
-    enum: ['Male', 'Female']
   },
   street: {
     type: String,
@@ -74,6 +68,11 @@ const customerSchema = new mongoose.Schema(
       trim: true,
       minlength: [2, "Name must be at least 2 characters long"],
       maxlength: [50, "Name cannot exceed 50 characters"],
+    },
+    gender: {
+      type: String,
+      trim: true,
+      enum: ['Male', 'Female']
     },
     email: {
       type: String,
