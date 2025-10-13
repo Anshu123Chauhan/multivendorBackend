@@ -143,3 +143,60 @@ export const getOrderById = async (req, res) => {
     });
   }
 };
+
+export const updateOrderTracking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "You are unauthorized to access this module",
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const authId = decoded._id;
+    const authType = decoded.userType;
+    console.log(authType);
+    let query = null;
+    if (authType === "Seller" || (authType === "User" && decoded.parent_type === "Seller")) {
+      query = { _id: id, customerId: authId || decoded.parent_id };
+    } else if (authType === "Admin" || (authType === "User" && decoded.parent_type === "Admin")) {
+      query = { _id: id };
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only sellers or admins can update tracking.",
+      });
+    }
+
+    const trackingUpdate = { [`orderTracking.${status}`]: new Date(), status };
+
+    const order = await Order.findOneAndUpdate(query, { $set: trackingUpdate }, { new: true });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found or not authorized to update",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Order tracking updated successfully for status '${status}'`,
+      order,
+    });
+  } catch (error) {
+    console.error("Error updating order tracking:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
