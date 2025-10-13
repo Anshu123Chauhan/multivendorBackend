@@ -25,6 +25,11 @@ const addressSchema = new mongoose.Schema({
     minlength: [3, "Street must be at least 3 characters long"],
     maxlength: [100, "Street cannot exceed 100 characters"],
   },
+  gender: {
+    type: String,
+    trim: true,
+    enum: ['Male', 'Female']
+  },
   street: {
     type: String,
     trim: true
