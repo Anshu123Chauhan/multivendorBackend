@@ -310,3 +310,51 @@ export const getCustomerOrders = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+
+export const customerOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "You are unauthorized to access this module",
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded._id;
+
+    const order = await Order.findById(id)
+      .populate("parentOrderId", "orderNumber totalAmount status")
+      .populate("items.productId", "name images price description")
+      .lean();
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+    if (order.userId && order.userId._id.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. You can only view your own orders.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      order,
+    });
+  } catch (error) {
+    console.error("Error fetching order details:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
