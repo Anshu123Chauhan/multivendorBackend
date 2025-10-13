@@ -60,7 +60,7 @@ const ProductSchema = new mongoose.Schema(
     sku: { type: String }, // optional product-level SKU
     inventory: { type: Number, default: 0 }, // optional aggregated stock
     tags: { type: [String], default: [] },
-    vendor: { type: mongoose.Schema.Types.ObjectId },
+    vendor: { type: mongoose.Schema.Types.ObjectId, ref:"Seller" },
     variants: [VariantSchema], // embedded variants (each variant has its own images)
     isDeleted: { type: Boolean, default: false },
     usertype: { type: String },

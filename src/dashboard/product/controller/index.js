@@ -2,6 +2,7 @@ import { Product } from "../../../models/Product.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { generateSlug } from "../../../utils/slugify.js";
+import Seller from '../../../models/Seller.js';
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -125,6 +126,7 @@ export const getProducts = async (req, res) => {
       .populate("category", "name")
       .populate("subCategory", "name")
       .populate("brand", "name")
+      .populate("vendor", "fullName")
       .sort({ [sortBy]: order === "desc" ? -1 : 1 })
       .skip((page - 1) * limit)
       .limit(limit);
