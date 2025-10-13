@@ -4,8 +4,17 @@ import {Product} from '../../../models/Product.js';
 
 export const productsListing = async (req, res) => {
   try {
-    const { minPrice, maxPrice, page = 1, limit = 10 } = req.query;
-    const { brand, category, subcategory, attributes } = req.body;
+    let {slug,  minPrice, maxPrice, page = 1, limit = 10} = req.query;
+    let {brand, category, subcategory, attributes}=req.body;
+
+
+    if (slug) {
+      const categoryDoc = await Category.findOne({ slug, isDeleted: false, isActive: true }).lean();
+      if (!categoryDoc) {
+        return res.status(404).json({ success: false, message: "Category not found for provided slug" });
+      }
+      category = categoryDoc._id.toString();
+    }
 
     const filter = { isDeleted: false, status: "active" };
     if (brand) filter.brand = brand;
@@ -82,3 +91,17 @@ export const productDetails = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 }
+
+export const categoryListing = async (req, res) => {
+  try {
+    const data = await Category.find(); 
+    res.json({ success: true, data });
+  } catch (err) {
+    console.error('Error:', err); 
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+
+
