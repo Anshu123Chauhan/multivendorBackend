@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { generateSlug } from "../../../utils/slugify.js";
 import dotenv from "dotenv";
+import Seller from "../../../models/Seller.js";
 dotenv.config();
 
 export const createProduct = async (req, res) => {
@@ -121,14 +122,21 @@ export const getProducts = async (req, res) => {
     }
 
     const total = await Product.countDocuments(baseQuery);
-    const data = await Product.find(baseQuery)
+    const products = await Product.find(baseQuery)
       .populate("category", "name")
       .populate("subCategory", "name")
       .populate("brand", "name")
       .sort({ [sortBy]: order === "desc" ? -1 : 1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit).lean();
+    const vendorIds = [...new Set(products.map((p) => p.vendor?.toString()).filter(Boolean))];
+    const sellers = await Seller.find({ _id: { $in: vendorIds } }).select("fullName").lean();
 
+    const sellerMap = Object.fromEntries(sellers.map((s) => [s._id.toString(), s]));
+    const data = products.map((product) => ({
+      ...product,
+      seller: sellerMap[product.vendor?.toString()] || 'Admin',
+    }));
     res.json({ total, page, limit, data });
   } catch (err) {
     res.status(500).json({ error: err.message });
