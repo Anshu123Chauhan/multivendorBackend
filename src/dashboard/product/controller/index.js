@@ -105,7 +105,7 @@ export const getProducts = async (req, res) => {
     if (usertype === "Seller") {
       baseQuery.vendor = vendor;
     }
-    if (usertype === "User") {
+    if (usertype === "User" && decoded.parent_type === 'Seller') {
       // staff should see their seller's products
       baseQuery.vendor = decoded.parent_id;
       // baseQuery.vendor = decoded._id; // staff belongs to seller

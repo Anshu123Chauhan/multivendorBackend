@@ -16,9 +16,9 @@ export const getOrders = async (req, res) => {
     let query = {};
 
     //Role-based filtering
-    if (usertype === "Seller") {
+    if (usertype === "Seller" || (usertype === "User" && decoded.parent_type === "Seller")) {
       console.log(`checking id ==>  ${decoded._id}`);
-      query.sellerId = decoded._id;
+      query.sellerId = usertype === "User" ? decoded.parent_id : decoded._id;
     }
 
     // Admin sees all orders
