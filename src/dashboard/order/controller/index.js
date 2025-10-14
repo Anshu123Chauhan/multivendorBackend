@@ -118,7 +118,6 @@ export const getOrderById = async (req, res) => {
     //Find the order by ID and populate related fields
     const order = await Order.find(QueryData)
       .populate("userId", "username phone email")
-      .populate("parentOrderId", "")
       .populate("customerId", "email")
       .populate("items.productId", "name images price description")
       .lean(); // Convert Mongoose doc to plain JS object

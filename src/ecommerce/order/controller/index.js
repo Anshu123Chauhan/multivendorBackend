@@ -1,6 +1,5 @@
 // controllers/orderController.js
-import { Order,OrderParent } from "../../../models/Order.js";
-import nodemailer from "nodemailer";
+import { Order } from "../../../models/Order.js";
 import { v4 as uuidv4 } from "uuid";
 import jwt from "jsonwebtoken";
 import {sendMail} from '../../../middleware/sendMail.js'
@@ -11,76 +10,123 @@ export const placeOrder = async (req, res) => {
   try {
     const {
       orderNumber,
-      items,
+      items = [],
       shippingAddress,
-      paymentMethod,
-      shippingMethod,
-      shippingCost,
-      status,
-      total,
+      paymentMethod = "cod",
+      shippingMethod = "standard",
+      shippingCost = 0,
+      status = "placed",
     } = req.body;
     const authHeader = req.headers["authorization"];
     const token = authHeader && authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!token)
+    if (!token) {
       return res.status(401).json({
-        sucess: false,
-        meaasge: "Token is Missing",
+        success: false,
+        message: "Token is missing",
       });
-    const userId = decoded._id; // assuming middleware adds user
-    const ourPaymentTransactionId = `${paymentMethod}-${uuidv4()}`;
-
-     //Group items by sellerId
-    const itemsBySeller = {};
-    items.forEach(item => {
-      if (!itemsBySeller[item.sellerId]) {
-        itemsBySeller[item.sellerId] = [];
-      }
-      itemsBySeller[item.sellerId].push(item);
-    });
-
-    //Create parent order
-    const parentOrder = await OrderParent.create({
-      userId,
-      orderNumber,
-      totalAmount: total,
-      paymentMethod,
-      paymentStatus: paymentMethod === "cod" ? "not_required" : "pending",
-      ourPaymentTransactionId,
-      shippingAddress,
-      shippingMethod,
-      shippingCost,
-      status,
-      [`orderTracking.${status}`]: new Date()
-    });
-
-    const subOrderIds = [];
-
-    //Create sub-orders per seller
-    for (const [sellerId, sellerItems] of Object.entries(itemsBySeller)) {
-      const subtotalSeller = sellerItems.reduce((sum, i) => sum + i.price * i.qty, 0);
-
-      const subOrder = await Order.create({
-        parentOrderId: parentOrder._id,
-        customerId:sellerId,
-        userId,
-        orderNumber: `${uuidv4()}`, // unique per seller
-        items: sellerItems,
-        subtotal: subtotalSeller,
-        total: subtotalSeller,
-        paymentMethod,
-        paymentStatus: paymentMethod === "cod" ? "not_required" : "pending",
-        shippingAddress,
-      [`orderTracking.${status}`]: new Date()
-      });
-
-      subOrderIds.push(subOrder._id);
     }
 
-    // Update parent order with sub-orders
-    parentOrder.subOrders = subOrderIds;
-    await parentOrder.save();
-    await Cart.findByIdAndDelete(orderNumber);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded._id;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No items provided to place an order",
+      });
+    }
+
+    const normalisedItems = [];
+    for (const rawItem of items) {
+      if (!rawItem?.sellerId) {
+        return res.status(400).json({
+          success: false,
+          message: "Each item must include a sellerId",
+        });
+      }
+      const qty = Number(rawItem.qty ?? rawItem.quantity ?? 1);
+      const price = Number(rawItem.price ?? 0);
+      normalisedItems.push({
+        ...rawItem,
+        sellerId: rawItem.sellerId,
+        qty: Number.isFinite(qty) && qty > 0 ? qty : 1,
+        price: Number.isFinite(price) ? price : 0,
+      });
+    }
+
+    // Group items by sellerId
+    const itemsBySeller = normalisedItems.reduce((acc, item) => {
+      const key = item.sellerId.toString();
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(item);
+      return acc;
+    }, {});
+
+    const sellerEntries = Object.entries(itemsBySeller);
+
+    if (sellerEntries.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Unable to group items by seller",
+      });
+    }
+
+    const allowedStatuses = ["placed", "paid", "shipped", "delivered", "cancelled"];
+    const orderStatus = allowedStatuses.includes(status) ? status : "placed";
+
+    const baseOrderNumber = orderNumber || uuidv4();
+    const baseTransactionId = `${paymentMethod || "cod"}-${uuidv4()}`;
+
+    const totalShippingCost = Number(shippingCost || 0);
+    const sellerCount = sellerEntries.length;
+    const shippingCentsTotal = Math.round(totalShippingCost * 100);
+    const baseShareCents = sellerCount > 0 ? Math.floor(shippingCentsTotal / sellerCount) : 0;
+    let remainderCents = sellerCount > 0 ? shippingCentsTotal % sellerCount : 0;
+
+    const createdOrders = [];
+
+    for (let index = 0; index < sellerEntries.length; index += 1) {
+      const [sellerId, sellerItems] = sellerEntries[index];
+      let shareCents = baseShareCents;
+      if (remainderCents > 0) {
+        shareCents += 1;
+        remainderCents -= 1;
+      }
+      const shippingShare = shareCents / 100;
+
+      const subtotal = sellerItems.reduce(
+        (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0),
+        0
+      );
+
+      const orderTracking = {};
+      orderTracking[orderStatus] = new Date();
+
+      const createdOrder = await Order.create({
+        orderNumber: sellerEntries.length === 1 ? baseOrderNumber : `${baseOrderNumber}-${index + 1}`,
+        customerId: sellerId,
+        userId,
+        items: sellerItems,
+        subtotal,
+        shippingMethod,
+        shippingCost: shippingShare,
+        shippingAddress,
+        paymentMethod,
+        paymentStatus: paymentMethod === "cod" ? "not_required" : "pending",
+        ourPaymentTransactionId: `${baseTransactionId}-${index + 1}`,
+        total: subtotal + shippingShare,
+        status: orderStatus,
+        orderTracking,
+      });
+
+      createdOrders.push(createdOrder.toObject());
+    }
+
+    if (orderNumber) {
+      await Cart.findByIdAndDelete(orderNumber).catch(() => null);
+    }
 
     const customer = await Customer.findById(userId);
     const orderDate = new Date().toLocaleDateString("en-IN", {
@@ -89,20 +135,43 @@ export const placeOrder = async (req, res) => {
       day: "numeric",
     });
 
-     // Build product table dynamically
-    const productRows = items
+    // Build product table dynamically
+    const productRows = normalisedItems
       .map(
         (p) => `
         <tr>
-          <td>${p.name}</td>
+          <td>${p.name ?? ""}</td>
           <td>${p.qty}</td>
-          <td>₹${p.price}</td>
+          <td>₹${Number(p.price || 0).toFixed(2)}</td>
         </tr>`
       )
       .join("");
 
+    const orderNumbersText = createdOrders.map((order) => order.orderNumber).join(", ");
+    const grandSubtotal = createdOrders.reduce((sum, order) => sum + Number(order.subtotal || 0), 0);
+    const grandShipping = createdOrders.reduce((sum, order) => sum + Number(order.shippingCost || 0), 0);
+    const grandTotal = createdOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+
+    const shippingAddressHtml = shippingAddress
+      ? [
+          shippingAddress.recipientName,
+          shippingAddress.street,
+          [shippingAddress.city, shippingAddress.state].filter(Boolean).join(", "),
+          shippingAddress.pincode,
+          shippingAddress.phone,
+        ]
+          .filter(Boolean)
+          .join("<br>")
+      : "Shipping address not available";
+
+    const primaryOrderNumber = createdOrders[0]?.orderNumber;
+    const trackingLink = primaryOrderNumber
+      ? `http://localhost:3000/orders/${primaryOrderNumber}`
+      : `http://localhost:3000/orders`;
+
     // Send confirmation email
-  const orderTemplate = `
+    if (customer?.email) {
+      const orderTemplate = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -188,8 +257,8 @@ export const placeOrder = async (req, res) => {
           <h1>Order Confirmed! 🎉</h1>
         </div>
         <div class="content">
-          <p>Hi ${customer.name},</p>
-          <p>Thank you for shopping with us! Your order <strong>#${orderNumber}</strong> has been successfully placed on <strong>${orderDate}</strong>.</p>
+          <p>Hi ${customer.name ?? "there"},</p>
+          <p>Thank you for shopping with us! Your order${createdOrders.length > 1 ? "s" : ""} <strong>#${orderNumbersText}</strong> ${createdOrders.length > 1 ? "have" : "has"} been successfully placed on <strong>${orderDate}</strong>.</p>
           <p>We’ll notify you once your order is shipped.</p>
 
           <div class="order-details">
@@ -206,16 +275,14 @@ export const placeOrder = async (req, res) => {
                 ${productRows}
               </tbody>
             </table>
-            <p class="total">Total: ₹${total}</p>
+            <p class="total">Grand Total: ₹${grandTotal.toFixed(2)}</p>
           </div>
 
           <p><strong>Shipping Address:</strong><br>
-            ${shippingAddress.recipientName}<br>
-            ${shippingAddress.street}, ${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}<br>
-            ${shippingAddress.phone}
+            ${shippingAddressHtml}
           </p>
 
-          <a href="http://localhost:3000/orders/${orderNumber}" class="btn" style="color: white; text-decoration: none;">Track Your Order</a>
+          <a href="${trackingLink}" class="btn" style="color: white; text-decoration: none;">Track Your Order</a>
 
           <p>If you have any questions, feel free to contact us at 
           <a href="mailto:support@ens.enterprises">support@ens.enterprises</a>.</p>
@@ -227,20 +294,22 @@ export const placeOrder = async (req, res) => {
       </div>
     </body>
     </html>`;
-  await sendMail(
-  orderTemplate,
-  "Order Confirmation - Your order has been placed successfully",
-  customer.email
-);
+
+      await sendMail(
+        orderTemplate,
+        "Order Confirmation - Your order has been placed successfully",
+        customer.email
+      );
+    }
 
     res.status(201).json({
       success: true,
-      message: "Order placed successfully",
-      parentOrder,
-      subOrders: subOrderIds
+      message: "Orders placed successfully",
+      orders: createdOrders,
     });
     
   } catch (err) {
+    console.error("Error placing order:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -249,13 +318,14 @@ export const getCustomerOrders = async (req, res) => {
   try {
     const authHeader = req.headers["authorization"];
     const token = authHeader && authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!token)
+    if (!token) {
       return res.status(401).json({
         sucess: false,
         meaasge: "Token is Missing",
       });
-    const userId = decoded._id; // assuming middleware adds user
+    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded._id;
 
     //Query params
     let {
@@ -266,8 +336,8 @@ export const getCustomerOrders = async (req, res) => {
       order = "desc"
     } = req.query;
 
-    page = parseInt(page);
-    limit = parseInt(limit);
+    page = parseInt(page, 10);
+    limit = parseInt(limit, 10);
     const sortOrder = order === "asc" ? 1 : -1;
 
     //Base query (only customer’s orders)
@@ -284,11 +354,10 @@ export const getCustomerOrders = async (req, res) => {
     }
 
     //Count total
-    const total = await OrderParent.countDocuments(query);
+    const total = await Order.countDocuments(query);
 
     //Fetch data
-   const orders = await Order.find(query)
-      .populate("parentOrderId", "")
+    const orders = await Order.find(query)
       .populate("items.productId", "name image price")
       .sort({ [sortBy]: sortOrder })
       .skip((page - 1) * limit)
@@ -329,8 +398,7 @@ export const customerOrder = async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const userId = decoded._id;
 
-    const order = await Order.findById(id)
-      .populate("parentOrderId", "orderNumber totalAmount status")
+    const order = await Order.findOne({ _id: id, userId })
       .populate("items.productId", "name images price description")
       .lean();
 
@@ -338,12 +406,6 @@ export const customerOrder = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Order not found",
-      });
-    }
-    if (order.userId && order.userId._id.toString() !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied. You can only view your own orders.",
       });
     }
 
