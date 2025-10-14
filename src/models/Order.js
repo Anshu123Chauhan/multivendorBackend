@@ -39,8 +39,10 @@ orderTracking: {
   shipped: Date,
   delivered: Date,
   cancelled: Date,
+  out_for_delivery: Date
 },
-status: { type: String, enum: ['placed','paid','shipped','delivered','cancelled'], default: 'placed' }
+trackingUrl: String,
+status: { type: String, enum: ['placed','paid','out_for_delivery','shipped','delivered','cancelled'], default: 'placed' }
 }, { timestamps: true });
 
 
