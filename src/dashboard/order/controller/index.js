@@ -146,7 +146,7 @@ export const getOrderById = async (req, res) => {
 export const updateOrderTracking = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, trackingUrl } = req.body;
     const authHeader = req.headers["authorization"];
     const token = authHeader && authHeader.split(" ")[1];
 
@@ -173,7 +173,7 @@ export const updateOrderTracking = async (req, res) => {
       });
     }
 
-    const trackingUpdate = { [`orderTracking.${status}`]: new Date(), status };
+    const trackingUpdate = { [`orderTracking.${status}`]: new Date(), status, trackingUrl };
 
     const order = await Order.findOneAndUpdate(query, { $set: trackingUpdate }, { new: true });
 

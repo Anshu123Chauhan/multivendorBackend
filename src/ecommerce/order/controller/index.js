@@ -358,7 +358,7 @@ export const getCustomerOrders = async (req, res) => {
 
     //Fetch data
     const orders = await Order.find(query)
-      .populate("items.productId", "name image price")
+      .populate("items.productId", "name images description sellingPrice variants ")
       .sort({ [sortBy]: sortOrder })
       .skip((page - 1) * limit)
       .limit(limit)
