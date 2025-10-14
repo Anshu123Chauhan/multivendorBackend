@@ -27,8 +27,7 @@ export const placeOrder = async (req, res) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decoded._id;
-
+    const customerId = decoded._id;
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
         success: false,
@@ -106,8 +105,8 @@ export const placeOrder = async (req, res) => {
 
       const createdOrder = await Order.create({
         orderNumber: sellerEntries.length === 1 ? baseOrderNumber : `${baseOrderNumber}-${index + 1}`,
-        customerId: sellerId,
-        userId,
+        customerId,
+        sellerId,
         items: sellerItems,
         subtotal,
         shippingMethod,
@@ -128,7 +127,7 @@ export const placeOrder = async (req, res) => {
       await Cart.findByIdAndDelete(orderNumber).catch(() => null);
     }
 
-    const customer = await Customer.findById(userId);
+    const customer = await Customer.findById(customerId);
     const orderDate = new Date().toLocaleDateString("en-IN", {
       year: "numeric",
       month: "long",
@@ -325,7 +324,7 @@ export const getCustomerOrders = async (req, res) => {
       });
     }
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decoded._id;
+    const customerId = decoded._id;
 
     //Query params
     let {
@@ -341,7 +340,7 @@ export const getCustomerOrders = async (req, res) => {
     const sortOrder = order === "asc" ? 1 : -1;
 
     //Base query (only customer’s orders)
-    const query = { userId };
+    const query = { customerId };
 
     //Searching
     if (search) {
@@ -396,9 +395,9 @@ export const customerOrder = async (req, res) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decoded._id;
+    const customerId = decoded._id;
 
-    const order = await Order.findOne({ _id: id, userId })
+    const order = await Order.findOne({ _id: id, customerId })
       .populate("items.productId", "name images price description")
       .lean();
 
