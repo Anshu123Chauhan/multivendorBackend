@@ -41,7 +41,7 @@ export const getOrders = async (req, res) => {
       query.$or = [
         { orderNumber: { $regex: search, $options: "i" } },
         { "items.name": { $regex: search, $options: "i" } },
-        { "userId.name": { $regex: search, $options: "i" } },
+        { "customerId.name": { $regex: search, $options: "i" } },
       ];
     }
     // console.log(`checking Query ==>  ${JSON.stringify(query)}`);
@@ -50,14 +50,12 @@ export const getOrders = async (req, res) => {
 
     //Fetch paginated data
     const orders = await Order.find(query)
-     .populate("userId", "username phone")
+     .populate("sellerId", "fullName")
       .populate("customerId", "name email")
-      .populate("items.productId", "name price")
+      .populate("items.productId", "name sellingPrice")
       .sort({ [sortBy]: sortOrder })
       .skip((page - 1) * limit)
       .limit(limit);
-
-     console.log(`checking Order ==>  ${JSON.stringify(orders)}`)
    
 
     const formattedOrders = orders.map((order) => ({
@@ -65,7 +63,7 @@ export const getOrders = async (req, res) => {
       orderId: order._id,
       totalItems: order.items.length,
       customerName: order.customerId?.name,
-      sellerName: order.sellerId?.name,
+      sellerName: order.sellerId?.fullName || 'Admin',
       paymentMethod:order.paymentMethod,
       paymentStatus: order.paymentStatus,
       shippingMethod: order.shippingMethod,
@@ -117,8 +115,8 @@ export const getOrderById = async (req, res) => {
 
     //Find the order by ID and populate related fields
     const order = await Order.find(QueryData)
-      .populate("userId", "username phone email")
-      .populate("customerId", "email")
+      .populate("customerId", "username phone email")
+      .populate("sellerId", "email")
       .populate("items.productId", "name images price description")
       .lean(); // Convert Mongoose doc to plain JS object
 
