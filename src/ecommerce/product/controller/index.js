@@ -1,13 +1,17 @@
 import Brand from '../../../models/Brand.js';
 import {Category,Subcategory} from '../../../models/Category.js';
 import {Product} from '../../../models/Product.js';
+import Seller from '../../../models/Seller.js';
 
 export const productsListing = async (req, res) => {
   try {
-    let {slug,  minPrice, maxPrice, page = 1, limit = 10} = req.query;
-    let {brand, category, subcategory, attributes}=req.body;
+    let { slug, minPrice, maxPrice, page = 1, limit = 10 } = req.query;
+    let { brand, category, subcategory, attributes } = req.body;
 
+    page = parseInt(page);
+    limit = parseInt(limit);
 
+    // Handle slug -> category
     if (slug) {
       const categoryDoc = await Category.findOne({ slug, isDeleted: false, isActive: true }).lean();
       if (!categoryDoc) {
@@ -29,28 +33,34 @@ export const productsListing = async (req, res) => {
 
     if (attributes && Array.isArray(attributes) && attributes.length > 0) {
       filter["$and"] = attributes.map(attr => ({
-        "variants.attributes": {
-          $elemMatch: { type: attr.type, value: attr.value }
-        }
+        "variants.attributes": { $elemMatch: { type: attr.type, value: attr.value } }
       }));
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const skip = (page - 1) * limit;
 
-    let products = await Product.find(filter)
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
+    let products = await Product.find(filter).skip(skip).limit(limit).lean();
 
-    products = products.map((p) => {
-      if (p.variants && p.variants.length > 0) {
-        const minVariantPrice = Math.min(...p.variants.map(v => v.price));
-        const maxVariantPrice = Math.max(...p.variants.map(v => v.price));
-        return { ...p, price: { min: minVariantPrice, max: maxVariantPrice } };
-      } else {
-        return { ...p, price: { min: p.sellingPrice, max: p.sellingPrice } };
-      }
-    });
+    products = await Promise.all(
+      products.map(async (p) => {
+        let seller = null;
+        if (p.vendor) {
+          seller = await Seller.findById(p.vendor).select("fullName").lean();
+        }
+
+        let price = { min: p.sellingPrice, max: p.sellingPrice };
+        if (p.variants && p.variants.length > 0) {
+          const prices = p.variants.map(v => v.price);
+          price = { min: Math.min(...prices), max: Math.max(...prices) };
+        }
+
+        return {
+          ...p,
+          price,
+          sellerName: seller ? seller.fullName : 'Admin',
+        };
+      })
+    );
 
     const total = await Product.countDocuments(filter);
 
@@ -59,13 +69,13 @@ export const productsListing = async (req, res) => {
       products,
       pagination: {
         total,
-        page: parseInt(page),
+        page,
         pages: Math.ceil(total / limit),
       },
     });
   } catch (err) {
     console.error("Error in productsListing:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 };
 
