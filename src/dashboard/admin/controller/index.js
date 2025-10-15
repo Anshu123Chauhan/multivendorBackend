@@ -5,6 +5,9 @@ import User from "../../../models/User.js";
 import Admin from "../../../models/admin.js";
 import { mongoose } from "mongoose";
 import Customer from "../../../models/customer.js";
+import { Order } from "../../../models/Order.js";
+import { Product } from "../../../models/Product.js";
+import { Category } from "../../../models/Category.js";
 
 export const adminRegister = async (req, res) => {
   try {
@@ -101,8 +104,32 @@ export const sellerListing = async (req, res) => {
 };
 export const customerListing = async (req, res) => {
   try {
-    const sellerList = await Customer.find().select("-password -__v");
-    res.json({ success: true, message: "Customer fetch successfully", sellerList });
+    const activeUser = req.user;
+    const query = {};
+    if(activeUser.userType === 'Seller' || (activeUser.userType === 'User' && activeUser.parent_type === 'Seller')){
+      const orderQuery = {sellerId: activeUser.userType === 'Seller' ? activeUser._id : activeUser.parent_id};
+      const ordersCustomerList = await Order.find(orderQuery).select('customerId');
+      const customerIds = [
+        ...new Set(ordersCustomerList.map((order) => order.customerId?.toString()).filter(Boolean)),
+      ];
+      query._id = { $in: customerIds };
+    }
+    const customerList = await Customer.find(query).select("-password -__v");
+    res.json({ success: true, message: "Customer fetch successfully", customerList });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+export const Analytics = async (req, res) => {
+  try {
+    const customerCount = await Customer.countDocuments();
+    const categoryCount = await Category.countDocuments();
+    const productCount = await Product.countDocuments();
+    const sellerCount = await Seller.countDocuments();
+    const orderCount = await Order.countDocuments();
+
+
+    res.json({ success: true, message: "fetch successfully", customerCount,categoryCount,productCount,sellerCount,orderCount });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
