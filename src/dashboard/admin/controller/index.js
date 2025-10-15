@@ -214,23 +214,18 @@ export const customerGet = async (req,res) => {
    try {
      const activeUser = req.user;
      const {id} = req.params;
-
-    if (activeUser.userType !== "Admin") {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          error: "Only admin can get customers",
-        });
-    }
     const customer = await Customer.findById(id).select("-__v -password");
-
-    res.json({ success: true, message: 'customer fetch successfully', customer });
+    const orderQuery = {};
+    if (activeUser.userType === "Seller" || ( activeUser.userType === "User" && activeUser.parent_type !== "Seller" )) {
+      orderQuery.sellerId =
+        activeUser.userType === "Seller"
+          ? activeUser._id
+          : activeUser.parent_id;
+    }
+    orderQuery.customerId = id;
+    const orders = await Order.find(orderQuery);
+    res.json({ success: true, message: 'customer fetch successfully', customer, orders });
   } catch (err) {
-    if (err.code === 11000) {
-      const field = Object.keys(err.keyPattern)[0];
-      return res.status(400).json({ message: `${field} already exists` });
-   }
     res.status(500).json({ success: false, error: err.message });
   }
 }
