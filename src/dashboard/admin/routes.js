@@ -1,6 +1,6 @@
 import express from 'express';
 import { sellerRegister, sellerListing, customerListing, userRegister, customerGet, assignRoleAndPermission, adminRegister, userGet, userList,
-    userUpdate, userDelete, getRoleAndPermissions, getRoleAndPermission, updateRoleAndPermission, deleteRoleAndPermission, updatePassword } from './controller/index.js';
+    userUpdate, userDelete, getRoleAndPermissions, getRoleAndPermission, updateRoleAndPermission, deleteRoleAndPermission, updatePassword, Analytics } from './controller/index.js';
 
 const router = express.Router();
 
@@ -12,6 +12,7 @@ router.post('/user-register', userRegister);
 router.get('/customer-get/:id', customerGet);
 router.get('/user-get/:id', userGet);
 router.get('/user-list', userList);
+router.get('/analytics', Analytics);
 router.put('/user-update/:id', userUpdate);
 router.delete('/user-delete/:id', userDelete);
 router.post('/role-permission', assignRoleAndPermission);
