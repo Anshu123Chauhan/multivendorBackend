@@ -122,14 +122,37 @@ export const customerListing = async (req, res) => {
 };
 export const Analytics = async (req, res) => {
   try {
-    const customerCount = await Customer.countDocuments();
-    const categoryCount = await Category.countDocuments();
-    const productCount = await Product.countDocuments();
-    const sellerCount = await Seller.countDocuments();
-    const orderCount = await Order.countDocuments();
+    const { startDate, endDate } = req.query;
 
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
 
-    res.json({ success: true, message: "fetch successfully", customerCount,categoryCount,productCount,sellerCount,orderCount });
+    const dateFilter = {};
+    if (start && end) {
+      dateFilter.createdAt = { $gte: start, $lte: end };
+    } else if (start) {
+      dateFilter.createdAt = { $gte: start };
+    } else if (end) {
+      dateFilter.createdAt = { $lte: end };
+    }
+
+    const [customerCount, categoryCount, productCount, sellerCount, orderCount] = await Promise.all([
+      Customer.countDocuments(dateFilter),
+      Category.countDocuments(dateFilter),
+      Product.countDocuments(dateFilter),
+      Seller.countDocuments(dateFilter),
+      Order.countDocuments(dateFilter),
+    ]);
+
+    res.json({
+      success: true,
+      message: "Fetched successfully",
+      customerCount,
+      categoryCount,
+      productCount,
+      sellerCount,
+      orderCount,
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
