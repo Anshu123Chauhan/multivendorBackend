@@ -137,15 +137,13 @@ export const Analytics = async (req, res) => {
 
 export const ordersofSellerAnalytics = async (req, res) => {
     try {
-    const { id } = req.params;
-
+    const { id } = req.query;
     const currentMonth = new Date();
     currentMonth.setDate(1);
     currentMonth.setHours(0, 0, 0, 0);
-    const orders = await Order.find({
-      sellerId: id,
-      createdAt: { $gte: currentMonth },
-    });
+    const query = {createdAt: { $gte: currentMonth }};
+    if(id) query.sellerId = id;
+    const orders = await Order.find(query);
     res.json({
       success: true,
       message: "Fetched successfully",
@@ -158,14 +156,13 @@ export const ordersofSellerAnalytics = async (req, res) => {
 
 export const orderTrackingofSellerAnalytics = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.query;
     const currentMonth = new Date();
     currentMonth.setDate(1);
     currentMonth.setHours(0, 0, 0, 0);
-    const orders = await Order.find({
-      sellerId: id,
-      createdAt: { $gte: currentMonth },
-    }).select("status");
+    const query = {createdAt: { $gte: currentMonth }};
+    if(id) query.sellerId = id;
+    const orders = await Order.find(query).select("status");
     let delivered = 0,
       canceled = 0,
       pending = 0;
