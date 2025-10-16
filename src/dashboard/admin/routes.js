@@ -1,6 +1,9 @@
 import express from 'express';
-import { sellerRegister, sellerListing, customerListing, userRegister, customerGet, assignRoleAndPermission, adminRegister, userGet, userList,
-    userUpdate, userDelete, getRoleAndPermissions, getRoleAndPermission, updateRoleAndPermission, deleteRoleAndPermission, updatePassword, Analytics } from './controller/index.js';
+import { sellerRegister, sellerListing, customerListing, userRegister, customerGet, 
+    assignRoleAndPermission, adminRegister, userGet, userList, userUpdate, userDelete,
+    getRoleAndPermissions,ordersofSellerAnalytics,orderTrackingofSellerAnalytics, Analytics,
+    getRoleAndPermission, updateRoleAndPermission, deleteRoleAndPermission, updatePassword
+ } from './controller/index.js';
 
 const router = express.Router();
 
@@ -13,6 +16,8 @@ router.get('/customer-get/:id', customerGet);
 router.get('/user-get/:id', userGet);
 router.get('/user-list', userList);
 router.get('/analytics', Analytics);
+router.get('/orders-analytics/:id', ordersofSellerAnalytics);
+router.get('/order-tracking-analytics/:id', orderTrackingofSellerAnalytics);
 router.put('/user-update/:id', userUpdate);
 router.delete('/user-delete/:id', userDelete);
 router.post('/role-permission', assignRoleAndPermission);

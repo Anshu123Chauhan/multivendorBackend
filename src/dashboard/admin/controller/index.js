@@ -122,36 +122,68 @@ export const customerListing = async (req, res) => {
 };
 export const Analytics = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
-
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
-
-    const dateFilter = {};
-    if (start && end) {
-      dateFilter.createdAt = { $gte: start, $lte: end };
-    } else if (start) {
-      dateFilter.createdAt = { $gte: start };
-    } else if (end) {
-      dateFilter.createdAt = { $lte: end };
-    }
-
     const [customerCount, categoryCount, productCount, sellerCount, orderCount] = await Promise.all([
-      Customer.countDocuments(dateFilter),
-      Category.countDocuments(dateFilter),
-      Product.countDocuments(dateFilter),
-      Seller.countDocuments(dateFilter),
-      Order.countDocuments(dateFilter),
+      Customer.countDocuments(),
+      Category.countDocuments(),
+      Product.countDocuments(),
+      Seller.countDocuments(),
+      Order.countDocuments(),
     ]);
+    res.json({ success: true, message: "fetch successfully", customerCount,categoryCount,productCount,sellerCount,orderCount });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+export const ordersofSellerAnalytics = async (req, res) => {
+    try {
+    const { id } = req.params;
+
+    const currentMonth = new Date();
+    currentMonth.setDate(1);
+    currentMonth.setHours(0, 0, 0, 0);
+    const orders = await Order.find({
+      sellerId: id,
+      createdAt: { $gte: currentMonth },
+    });
+    res.json({
+      success: true,
+      message: "Fetched successfully",
+      orders
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+export const orderTrackingofSellerAnalytics = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentMonth = new Date();
+    currentMonth.setDate(1);
+    currentMonth.setHours(0, 0, 0, 0);
+    const orders = await Order.find({
+      sellerId: id,
+      createdAt: { $gte: currentMonth },
+    }).select("status");
+    let delivered = 0,
+      canceled = 0,
+      pending = 0;
+    orders.forEach((order) => {
+      if (order.status === "delivered") delivered++;
+      else if (order.status === "canceled") canceled++;
+      else pending++;
+    });
+
+    const total = orders.length;
 
     res.json({
       success: true,
       message: "Fetched successfully",
-      customerCount,
-      categoryCount,
-      productCount,
-      sellerCount,
-      orderCount,
+      totalOrders: total,
+      delivered,
+      canceled,
+      pending,
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
