@@ -136,18 +136,71 @@ export const Analytics = async (req, res) => {
 };
 
 export const ordersofSellerAnalytics = async (req, res) => {
-    try {
-    const { id } = req.query;
-    const currentMonth = new Date();
-    currentMonth.setDate(1);
-    currentMonth.setHours(0, 0, 0, 0);
-    const query = {createdAt: { $gte: currentMonth }};
-    if(id) query.sellerId = id;
-    const orders = await Order.find(query);
+  try {
+    let { sellerId, currentMonth } = req.query;
+    if (!currentMonth) {
+      currentMonth = new Date();
+    } else {
+      currentMonth = new Date(currentMonth);
+    }
+    // currentMonth.setDate(1);
+    // currentMonth.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+1, 1);
+    const startOfNextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 2, 1);
+    console.log("Date range:", startOfMonth, startOfNextMonth);
+
+    const matchQuery = { createdAt: { $gte: startOfMonth, $lt: startOfNextMonth } };
+    
+    if (sellerId) {
+      if (mongoose.Types.ObjectId.isValid(sellerId)) {
+        matchQuery.sellerId = new mongoose.Types.ObjectId(sellerId);
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid sellerId format"
+        });
+      }
+    }
+    const result = await Order.aggregate([
+      { $match: matchQuery },
+      {
+        $facet: {
+          dayWiseOrders: [
+            {
+              $group: {
+                _id: {
+                  $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
+                },
+                count: { $sum: 1 }
+              }
+            },
+            {
+              $project: {
+                _id: 0,
+                date: "$_id",
+                count: 1
+              }
+            },
+            { $sort: { date: 1 } }
+          ],
+          totalCount: [
+            {
+              $count: "total"
+            }
+          ]
+        }
+      }
+    ]);
+    
+    const dayWiseOrders = result[0].dayWiseOrders || [];
+    const totalNumberOfOrders = result[0].totalCount[0]?.total || 0;
+    
     res.json({
       success: true,
       message: "Fetched successfully",
-      orders
+      orders: dayWiseOrders,
+      numberOfDays: dayWiseOrders.length,
+      totalNumberOfOrders
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -156,12 +209,24 @@ export const ordersofSellerAnalytics = async (req, res) => {
 
 export const orderTrackingofSellerAnalytics = async (req, res) => {
   try {
-    const { id } = req.query;
-    const currentMonth = new Date();
-    currentMonth.setDate(1);
-    currentMonth.setHours(0, 0, 0, 0);
-    const query = {createdAt: { $gte: currentMonth }};
-    if(id) query.sellerId = id;
+    let { sellerId, currentMonth } = req.query;
+    if (!currentMonth) {
+      currentMonth = new Date();
+    } else {
+      currentMonth = new Date(currentMonth);
+      if (isNaN(currentMonth.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid currentMonth date"
+        });
+      }
+    }
+    const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    const startOfNextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 2, 1);
+    console.log("Date range:", startOfMonth, startOfNextMonth);
+
+    const query = { createdAt: { $gte: startOfMonth, $lt: startOfNextMonth } };
+    if(sellerId) query.sellerId = sellerId;
     const orders = await Order.find(query).select("status");
     let delivered = 0,
       canceled = 0,
