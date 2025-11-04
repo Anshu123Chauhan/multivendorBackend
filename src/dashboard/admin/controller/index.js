@@ -8,6 +8,7 @@ import Customer from "../../../models/customer.js";
 import { Order } from "../../../models/Order.js";
 import { Product } from "../../../models/Product.js";
 import { Category } from "../../../models/Category.js";
+import sellerCategory from "../../../models/sellerCategory.js";
 
 export const adminRegister = async (req, res) => {
   try {
@@ -102,6 +103,7 @@ export const sellerListing = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+
 export const customerListing = async (req, res) => {
   try {
     const activeUser = req.user;
@@ -120,6 +122,7 @@ export const customerListing = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+
 export const Analytics = async (req, res) => {
   try {
     const [customerCount, categoryCount, productCount, sellerCount, orderCount] = await Promise.all([
@@ -604,8 +607,6 @@ export const deleteRoleAndPermission = async (req, res) => {
   }
 };
 
-
-
 export const updatePassword = async (req, res) => {
   try {
     const activeUser = req.user; 
@@ -642,3 +643,126 @@ export const updatePassword = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
+
+export const createSellerCategory = async (req, res) => {
+  try {
+    let { sellerCategoryName } = req.body;
+
+     if (!sellerCategoryName || sellerCategoryName.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Seller category name is required.',
+      });
+    }
+     sellerCategoryName = sellerCategoryName.trim().toLowerCase();  
+    const existingCategory = await sellerCategory.findOne({
+      sellerCategoryName,
+    })
+    if (existingCategory) {
+      return res.status(400).json({
+        success: false,
+        message: 'Seller category already exists.',
+      });
+    }
+    const newSellerCategory = new sellerCategory({
+      sellerCategoryName
+  })
+  await newSellerCategory.save();
+   res.status(201).json({
+      success: true,
+      message: 'Seller category created successfully.',
+      data: newSellerCategory,
+    });
+  }
+  catch(err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export const editSellerCategory = async (req, res) => {
+try{
+const {id} = req.params;
+const {sellerCategoryName} = req.body;
+if(!id){
+  return res.status(400).json({ 
+    success: false,
+    message: "Category ID is required" 
+  });
+}
+if(!sellerCategoryName || sellerCategoryName.trim() === ''){
+  return res.status(400).json({
+    success: false,
+    message: 'Seller category name is required.',
+  });
+}
+const normalizedName = sellerCategoryName.trim().toLowerCase();
+const category  = await sellerCategory.findById(id);
+if(!category){
+  return res.status(404).json({
+    success: false,
+    message: 'Seller category not found.',
+  });
+}
+const existingCategory = await sellerCategory.findOne({
+      sellerCategoryName: normalizedName,
+      _id: { $ne: id },
+    }).collation({ locale: 'en', strength: 2 });
+
+     if (existingCategory) {
+      return res.status(400).json({
+        success: false,
+        message: 'Seller category name already exists.',
+      });
+    }
+  category.sellerCategoryName = normalizedName;
+  await category.save();
+ res.status(200).json({
+      success: true,
+      message: 'Seller category updated successfully.',
+      data: category,
+    });
+
+}catch(error){
+  return res.status(500).json({ success: false, error: err.message });
+}
+}
+
+export const deleteSellerCategory = async (req, res) => {
+try{
+  const {id} = req.params;
+  if(!id){
+    return res.status(400).json({
+      success: false,
+      message: "Category ID is required"
+    });
+  }
+  const category = await sellerCategory.findById(id)
+  if(!category){
+    return res.status(404).json({
+      success: false,
+      message: "Seller category not found"
+    });
+  }
+   await sellerCategory.findByIdAndDelete(id);
+   return res.status(200).json({
+      success: true,
+      message: "Seller category deleted successfully"
+    }); 
+}catch(error){
+  return res.status(500).json({ success: false, error: err.message });
+}
+}
+
+export const listSellerCategory = async (req, res) => {
+try{
+const categories  = await sellerCategory.find({})
+ return res.status(200).json({
+      success: true,
+      message: 'Seller categories fetched successfully.',
+      data: categories,
+    });
+
+}catch(error){
+  return res.status(500).json({ success: false, error: err.message });
+} 
+}
