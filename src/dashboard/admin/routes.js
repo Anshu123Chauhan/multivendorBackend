@@ -32,7 +32,7 @@ router.put('/editSellerCategory/:id', editSellerCategory);
 router.delete('/deleteSellerCategory/:id', deleteSellerCategory);
 router.get('/list-seller-categories',listSellerCategory )
 router.post('/import-sellers', upload.single("file"),importSeller)
-router.patch('/sellerStatusToggle/:id',sellerStatusToggle)
+router.put('/sellerStatusToggle/:id',sellerStatusToggle)
 
 export default router;
 
