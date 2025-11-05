@@ -25,6 +25,12 @@ const sellerSchema = new mongoose.Schema(
     commission : { type: String },
 
     addressProof: { type: String },
+    brandName: { type: String },
+    companyWebsite: { type: String },
+    sellerCategoryId:{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SellerCategory'
+    }
   },
   { timestamps: true }
 );

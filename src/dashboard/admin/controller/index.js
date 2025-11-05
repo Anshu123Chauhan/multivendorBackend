@@ -9,6 +9,7 @@ import { Order } from "../../../models/Order.js";
 import { Product } from "../../../models/Product.js";
 import { Category } from "../../../models/Category.js";
 import sellerCategory from "../../../models/sellerCategory.js";
+import XLSX from "xlsx";
 
 export const adminRegister = async (req, res) => {
   try {
@@ -65,6 +66,9 @@ export const sellerRegister = async (req, res) => {
       ifscCode,
       bankAccount,
       addressProof,
+      brandName,
+      companyWebsite,
+      sellerCategoryId
     } = req.body;
 
     const seller = new Seller({
@@ -82,6 +86,9 @@ export const sellerRegister = async (req, res) => {
       ifscCode,
       bankAccount,
       addressProof,
+      brandName,
+      companyWebsite,
+      sellerCategoryId
     });
 
     await seller.save();
@@ -95,6 +102,7 @@ export const sellerRegister = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+
 export const sellerListing = async (req, res) => {
   try {
     const sellerList = await Seller.find({isDeleted: false});
@@ -765,4 +773,130 @@ const categories  = await sellerCategory.find({})
 }catch(error){
   return res.status(500).json({ success: false, error: err.message });
 } 
+}
+
+export const importSeller = async(req,res)=>{
+  try {
+
+     if (!req.file) {
+      return res.status(400).json({ success: false, message: "Excel file is required." });
+    }
+    // ✅ Read Excel buffer
+      console.log("📖 Reading Excel file...");
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+      console.log(`📊 Total rows found (excluding header): ${rows.length}`);
+    
+      if (rows.length === 0) {
+      return res.status(400).json({ success: false, message: "Excel file is empty." });
+    }
+
+    // ✅ Import report initialization
+    const report = {
+      totalRows: rows.length,
+      inserted: 0,
+      skipped: 0,
+      failed: [],
+    };
+    for(let i=0; i<rows.length; i++){{
+      const row = rows[i];
+      const rowIndex = i+2;
+        // console.log(`\n🔹 Processing row ${rowIndex}:`, row);
+         const email = (row.email || "").toLowerCase().trim();
+      const phone = (row.phone || "").toString().trim();
+      const password = (row.password || "").trim();
+      const fullName = (row.fullName || "").trim();
+      const businessName = (row.businessName || "").trim();
+        if (!email || !phone || !password || !fullName || !businessName) {
+        // console.log(`⚠️ Row ${rowIndex} skipped — missing required fields.`);
+        report.failed.push({
+          row: rowIndex,
+          reason: "Missing required fields (email, phone, password, fullName, businessName)",
+        });
+        continue;
+    }
+    // ✅ Check duplicates
+      // console.log(`🔍 Checking if email or phone already exists in DB...`);
+      const existingSeller = await Seller.findOne({
+        $or: [{ email }, { phone }],
+      });
+       if (existingSeller) {
+        // console.log(`⚠️ Row ${rowIndex}: Duplicate found (email or phone already exists)`);
+        report.skipped += 1;
+        continue;
+      }
+      const sellerData = {
+        email,
+        password,
+        fullName,
+        businessName,
+        businessAddress: row.businessAddress || "",
+        phone,
+        identityProof: row.identityProof || "",
+        identityProofNumber: row.identityProofNumber || "",
+        gstNumber: row.gstNumber || "",
+        accountHolder: row.accountHolder || "",
+        ifscCode: row.ifscCode || "",
+        bankAccount: row.bankAccount || "",
+        addressProof: row.addressProof || "",
+        brandName: row.brandName || "",
+        companyWebsite: row.companyWebsite || "",
+        sellerCategoryId: row.sellerCategoryId || null,
+        commission: row.commission || "",
+        isActive: row.isActive?.toString().toLowerCase() === "true",
+        isDeleted: row.isDeleted?.toString().toLowerCase() === "true",
+      };
+            // console.log(`🧾 Prepared seller data for row ${rowIndex}:`, sellerData);
+             try {
+        const newSeller = new Seller(sellerData);
+        await newSeller.save();
+        report.inserted += 1;
+        // console.log(`✅ Row ${rowIndex}: Seller saved successfully!`);
+      } catch (err) {
+        console.log(`❌ Error saving row ${rowIndex}:`, err.message);
+        report.failed.push({ row: rowIndex, reason: err.message });
+      }
+    }
+    // console.log("📋 Summary Report:", report);
+    return res.status(200).json({
+      success: true,
+      message: "Seller import completed successfully",
+      report,
+    });
+}
+  } catch (error) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export const sellerStatusToggle = async(req,res)=>{
+  try {
+    const { id } = req.params;
+      const { isActive } = req.body;
+       if (!id) {
+      return res.status(400).json({ success: false, message: "Seller ID is required." });
+    }
+     if (typeof isActive !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "isActive must be a boolean",
+      });
+    }
+    const seller = await Seller.findById(id);
+    if (!seller) {
+      return res.status(404).json({ success: false, message: "Seller not found." });
+    }
+    
+    seller.isActive = isActive;
+    await seller.save();
+    return res.status(200).json({
+      success: true,
+      message: `Seller status updated successfully.`,
+      data: seller,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
 }
