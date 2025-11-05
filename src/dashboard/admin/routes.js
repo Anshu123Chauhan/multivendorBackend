@@ -3,7 +3,7 @@ import multer from "multer";
 import { sellerRegister, sellerListing, customerListing, userRegister, customerGet, 
     assignRoleAndPermission, adminRegister, userGet, userList, userUpdate, userDelete,
     getRoleAndPermissions,ordersofSellerAnalytics,orderTrackingofSellerAnalytics, Analytics,
-    getRoleAndPermission, updateRoleAndPermission, deleteRoleAndPermission, updatePassword,createSellerCategory,editSellerCategory,deleteSellerCategory,listSellerCategory,importSeller,sellerStatusToggle,sellerLoginByAdmin
+    getRoleAndPermission, updateRoleAndPermission, deleteRoleAndPermission, updatePassword,createSellerCategory,editSellerCategory,deleteSellerCategory,listSellerCategory,importSeller,sellerStatusToggle,sellerLoginByAdmin,sellerCategoryCount
  } from './controller/index.js';
 const upload = multer({ storage: multer.memoryStorage() });
 const router = express.Router();
@@ -34,6 +34,7 @@ router.get('/list-seller-categories',listSellerCategory )
 router.post('/import-sellers', upload.single("file"),importSeller)
 router.put('/sellerStatusToggle/:id',sellerStatusToggle)
 router.post('/sellerLoginByAdmin/:id', sellerLoginByAdmin)
+router.get('/sellerCategoryCount',sellerCategoryCount)
 
 export default router;
 

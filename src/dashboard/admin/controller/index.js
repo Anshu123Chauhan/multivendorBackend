@@ -422,6 +422,7 @@ export const userUpdate = async (req,res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 }
+
 export const userDelete = async (req,res) => {
     try {
     const activeUser = req.user;
@@ -936,9 +937,39 @@ export const sellerLoginByAdmin = async(req,res)=>{
         message: "Seller account is inactive. Please contact admin.",
       });
     }
+    const role = await Role.find(seller.parent_id).select("-__v");
+    console.log("Finding role for seller:", seller.parent_id);
+    if (!role) {
+      return res.status(404).json({
+        success: false,
+        message: "Role not found for this seller.",
+      });
+    }
+    const permissions = await Permission.find({
+      role_id: new mongoose.Types.ObjectId(role._id),
+    })
+      .select("-__v -createdAt -updatedAt")
+      .lean();
+
+    // console.log("🎭 Seller Role:", role);
+    console.log("🔑 Seller Permissions:", permissions);
+
+     seller.role = role;
+    seller.permissions = permissions;
    const sellerToken = jwt.sign(
-      seller,
-      "jwtokenkey",
+      // seller,
+       {
+        id: seller._id,
+        email: seller.email,
+        role: role.role_name,
+        role_type: role.role_type,
+        permissions,
+        createdBy: {
+          adminEmail: admin.email,
+          adminId: admin._id,
+        },
+      },
+      process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
     return res.status(200).json({
@@ -951,3 +982,58 @@ export const sellerLoginByAdmin = async(req,res)=>{
     return res.status(500).json({ success: false, error: error.message });
   }
 }
+
+export const sellerCategoryCount = async (req, res) => {
+  try {
+  
+    const sellerCounts = await Seller.aggregate([
+      {
+        $match: {
+          sellerCategoryId: { $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: "$sellerCategoryId",
+          sellerCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // console.log("🧮 Aggregated Seller Counts:", sellerCounts);
+    const categories = await sellerCategory.find().lean();
+
+    const result = categories.map((category) => {
+      const match = sellerCounts.find((item) =>
+        item._id && category._id && item._id.equals(category._id)
+      );
+
+      // console.log(
+      //   `🔹 Category: ${category.sellerCategoryName}, Sellers Found: ${
+      //     match ? match.sellerCount : 0
+      //   }`
+      // );
+
+      return {
+        _id: category._id,
+        sellerCategoryName: category.sellerCategoryName,
+        count: match ? match.sellerCount : 0,
+      };
+    });
+    result.sort((a, b) => b.count - a.count);
+
+    // console.log("✅ Final Category Count Result:", result);
+    return res.status(200).json({
+      success: true,
+      totalCategories: result.length,
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+
+
+
+
