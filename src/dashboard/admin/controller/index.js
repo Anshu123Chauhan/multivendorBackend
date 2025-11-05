@@ -10,6 +10,7 @@ import { Product } from "../../../models/Product.js";
 import { Category } from "../../../models/Category.js";
 import sellerCategory from "../../../models/sellerCategory.js";
 import XLSX from "xlsx";
+import jwt from "jsonwebtoken";
 
 export const adminRegister = async (req, res) => {
   try {
@@ -782,12 +783,12 @@ export const importSeller = async(req,res)=>{
       return res.status(400).json({ success: false, message: "Excel file is required." });
     }
     // ✅ Read Excel buffer
-      console.log("📖 Reading Excel file...");
+      // console.log("📖 Reading Excel file...");
     const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-      console.log(`📊 Total rows found (excluding header): ${rows.length}`);
+      // console.log(`📊 Total rows found (excluding header): ${rows.length}`);
     
       if (rows.length === 0) {
       return res.status(400).json({ success: false, message: "Excel file is empty." });
@@ -824,6 +825,10 @@ export const importSeller = async(req,res)=>{
       });
        if (existingSeller) {
         // console.log(`⚠️ Row ${rowIndex}: Duplicate found (email or phone already exists)`);
+        return res.status(400).json({
+          success: false,
+          message: `Duplicate found may be Seller with email or phone are already exists.`,
+        });
         report.skipped += 1;
         continue;
       }
@@ -867,7 +872,7 @@ export const importSeller = async(req,res)=>{
     });
 }
   } catch (error) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: error.message });
   }
 }
 
@@ -898,5 +903,51 @@ export const sellerStatusToggle = async(req,res)=>{
     });
   } catch (error) {
     return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export const sellerLoginByAdmin = async(req,res)=>{
+  try {
+   
+    const admin = req.user;
+    if (!admin || admin.userType !== "Admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Only admin can log in sellers.",
+      });
+    }
+     const sellerId = req.params?.id;
+    if (!sellerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Seller ID is required.",
+      });
+    }
+    const seller = await Seller.findById(sellerId).select("-password -__v").lean();
+    if (!seller) {
+      return res.status(404).json({
+        success: false,
+        message: "Seller not found.",
+      });
+    }
+     if (!seller.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: "Seller account is inactive. Please contact admin.",
+      });
+    }
+   const sellerToken = jwt.sign(
+      seller,
+      "jwtokenkey",
+      { expiresIn: "7d" }
+    );
+    return res.status(200).json({
+      success: true,
+      message: "The seller has been successfully logged in by the admin",
+      token: sellerToken
+    });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
   }
 }
