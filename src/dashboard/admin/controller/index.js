@@ -765,12 +765,56 @@ try{
 
 export const listSellerCategory = async (req, res) => {
 try{
-const categories  = await sellerCategory.find({})
- return res.status(200).json({
-      success: true,
-      message: 'Seller categories fetched successfully.',
-      data: categories,
+// const categories  = await sellerCategory.find({})
+//  return res.status(200).json({
+//       success: true,
+//       message: 'Seller categories fetched successfully.',
+//       data: categories,
+//     });
+// count the total seller whose using each category  
+    const sellerCounts = await Seller.aggregate([
+      {
+        $match: {
+          sellerCategoryId: { $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: "$sellerCategoryId",
+          sellerCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // console.log("🧮 Aggregated Seller Counts:", sellerCounts);
+    const categories = await sellerCategory.find().lean();
+
+    const result = categories.map((category) => {
+      const match = sellerCounts.find((item) =>
+        item._id && category._id && item._id.equals(category._id)
+      );
+
+      // console.log(
+      //   `🔹 Category: ${category.sellerCategoryName}, Sellers Found: ${
+      //     match ? match.sellerCount : 0
+      //   }`
+      // );
+
+      return {
+        _id: category._id,
+        sellerCategoryName: category.sellerCategoryName,
+        count: match ? match.sellerCount : 0,
+      };
     });
+    result.sort((a, b) => b.count - a.count);
+
+    // console.log("✅ Final Category Count Result:", result);
+    return res.status(200).json({
+      success: true,
+      totalCategories: result.length,
+      data: result,
+    });
+  
 
 }catch(error){
   return res.status(500).json({ success: false, error: err.message });
@@ -983,55 +1027,55 @@ export const sellerLoginByAdmin = async(req,res)=>{
   }
 }
 
-export const sellerCategoryCount = async (req, res) => {
-  try {
+// export const sellerCategoryCount = async (req, res) => {
+//   try {
   
-    const sellerCounts = await Seller.aggregate([
-      {
-        $match: {
-          sellerCategoryId: { $ne: null },
-        },
-      },
-      {
-        $group: {
-          _id: "$sellerCategoryId",
-          sellerCount: { $sum: 1 },
-        },
-      },
-    ]);
+//     const sellerCounts = await Seller.aggregate([
+//       {
+//         $match: {
+//           sellerCategoryId: { $ne: null },
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: "$sellerCategoryId",
+//           sellerCount: { $sum: 1 },
+//         },
+//       },
+//     ]);
 
-    // console.log("🧮 Aggregated Seller Counts:", sellerCounts);
-    const categories = await sellerCategory.find().lean();
+//     // console.log("🧮 Aggregated Seller Counts:", sellerCounts);
+//     const categories = await sellerCategory.find().lean();
 
-    const result = categories.map((category) => {
-      const match = sellerCounts.find((item) =>
-        item._id && category._id && item._id.equals(category._id)
-      );
+//     const result = categories.map((category) => {
+//       const match = sellerCounts.find((item) =>
+//         item._id && category._id && item._id.equals(category._id)
+//       );
 
-      // console.log(
-      //   `🔹 Category: ${category.sellerCategoryName}, Sellers Found: ${
-      //     match ? match.sellerCount : 0
-      //   }`
-      // );
+//       // console.log(
+//       //   `🔹 Category: ${category.sellerCategoryName}, Sellers Found: ${
+//       //     match ? match.sellerCount : 0
+//       //   }`
+//       // );
 
-      return {
-        _id: category._id,
-        sellerCategoryName: category.sellerCategoryName,
-        count: match ? match.sellerCount : 0,
-      };
-    });
-    result.sort((a, b) => b.count - a.count);
+//       return {
+//         _id: category._id,
+//         sellerCategoryName: category.sellerCategoryName,
+//         count: match ? match.sellerCount : 0,
+//       };
+//     });
+//     result.sort((a, b) => b.count - a.count);
 
-    // console.log("✅ Final Category Count Result:", result);
-    return res.status(200).json({
-      success: true,
-      totalCategories: result.length,
-      data: result,
-    });
-  } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
-  }
-};
+//     // console.log("✅ Final Category Count Result:", result);
+//     return res.status(200).json({
+//       success: true,
+//       totalCategories: result.length,
+//       data: result,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({ success: false, error: error.message });
+//   }
+// };
 
 
 
